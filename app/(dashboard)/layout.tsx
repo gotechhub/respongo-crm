@@ -23,7 +23,7 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("id, email, full_name, avatar_url, phone, role, region, is_active, created_at")
     .eq("id", user.id)
@@ -32,9 +32,16 @@ export default async function DashboardLayout({
   const typedProfile = profile as ProfileRow | null;
 
   if (!typedProfile?.role) {
+    // GEÇİCİ TEŞHİS BLOĞU — sorun çözülünce kaldırılacak.
+    console.error("[dashboard-debug] role bos gorundu", {
+      authUserId: user.id,
+      authEmail: user.email,
+      profile,
+      profileError,
+    });
     return (
       <div className="flex min-h-screen items-center justify-center bg-rg-bg px-6">
-        <div className="max-w-sm rounded-2xl border border-rg-line bg-rg-surface p-8 text-center shadow-rg">
+        <div className="max-w-md rounded-2xl border border-rg-line bg-rg-surface p-8 text-center shadow-rg">
           <div className="font-display text-lg font-bold text-rg-ink">
             Hesabın onay bekliyor
           </div>
@@ -42,6 +49,13 @@ export default async function DashboardLayout({
             Giriş yaptın ({user.email}) ama hesabına henüz rol atanmadı. Süper
             Admin sana rol atadığı anda bu ekran otomatik değişecek.
           </p>
+          <div className="mt-4 rounded-lg bg-rg-surface-alt p-3 text-left text-[10.5px] text-rg-ink-faint">
+            <div>teşhis — auth id: {user.id}</div>
+            <div>profil bulundu mu: {profile ? "evet" : "hayır"}</div>
+            {profileError && (
+              <div>hata: {profileError.message} (kod: {profileError.code})</div>
+            )}
+          </div>
         </div>
       </div>
     );
