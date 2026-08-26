@@ -9,6 +9,8 @@ import {
   Milestone,
   ShieldCheck,
   Wallet,
+  Building2,
+  Contact,
 } from "lucide-react";
 
 export type NavItem = {
@@ -30,6 +32,13 @@ export const navGroups: NavGroup[] = [
     label: "Genel",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, phase: "beta" },
+    ],
+  },
+  {
+    label: "Şirketler & Kişiler",
+    items: [
+      { label: "Şirketler", href: "/companies", icon: Building2, phase: "beta" },
+      { label: "Kişiler", href: "/contacts", icon: Contact, phase: "beta" },
     ],
   },
   {

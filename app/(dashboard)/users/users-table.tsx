@@ -26,7 +26,7 @@ function RoleSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as UserRole)}
-      className="rounded-[8px] border border-rg-line bg-white px-2.5 py-1.5 text-[12.5px] text-rg-ink outline-none focus:border-primary"
+      className="rounded-[8px] border border-rg-line bg-rg-surface px-2.5 py-1.5 text-[12.5px] text-rg-ink outline-none focus:border-primary"
     >
       <option value="" disabled>
         Rol seç
@@ -57,7 +57,7 @@ function RegionSelect({
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as Region | "")}
-      className="rounded-[8px] border border-rg-line bg-white px-2.5 py-1.5 text-[12.5px] text-rg-ink outline-none focus:border-primary disabled:bg-rg-surface-alt disabled:text-rg-ink-faint"
+      className="rounded-[8px] border border-rg-line bg-rg-surface px-2.5 py-1.5 text-[12.5px] text-rg-ink outline-none focus:border-primary disabled:bg-rg-surface-alt disabled:text-rg-ink-faint"
     >
       <option value="">— (sadece Kurucu)</option>
       {options.map((r) => (
@@ -230,7 +230,7 @@ export function UsersTable({
               value={inviteName}
               onChange={(e) => setInviteName(e.target.value)}
               placeholder="Ayşe Yılmaz"
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -243,7 +243,7 @@ export function UsersTable({
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="ayse@respongo.com"
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="flex flex-col gap-1.5">
