@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_LOGO } from "@/lib/product-logos";
+import { Logo } from "@/components/ui/logo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,13 +58,7 @@ export default async function PriceListsPage() {
             <div className="flex items-center justify-between border-b border-rg-line bg-rg-surface-alt px-4 py-3">
               <div className="flex items-center gap-2.5">
                 {PRODUCT_LOGO[list.product] ? (
-                  <Image
-                    src={PRODUCT_LOGO[list.product].src}
-                    alt={PRODUCT_LABEL[list.product] ?? list.product}
-                    width={PRODUCT_LOGO[list.product].width}
-                    height={PRODUCT_LOGO[list.product].height}
-                    className="h-5 w-auto"
-                  />
+                  <Logo product={list.product as keyof typeof PRODUCT_LOGO} alt={PRODUCT_LABEL[list.product]} className="h-5 w-auto" />
                 ) : (
                   <span className="font-display text-[13px] font-bold text-rg-ink">
                     {PRODUCT_LABEL[list.product] ?? list.product}

@@ -96,7 +96,7 @@ function LeadRowItem({ row, ownerName }: { row: LeadRow; ownerName: string }) {
           <select
             value={status}
             onChange={(e) => handleStatusChange(e.target.value as LeadStatus)}
-            className="rounded-[8px] border border-rg-line bg-white px-2.5 py-1.5 text-[12px] text-rg-ink outline-none focus:border-primary"
+            className="rounded-[8px] border border-rg-line bg-rg-surface px-2.5 py-1.5 text-[12px] text-rg-ink outline-none focus:border-primary"
           >
             {EDITABLE_STATUSES.map((s) => (
               <option key={s} value={s}>

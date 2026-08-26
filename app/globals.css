@@ -63,6 +63,54 @@
     --go-pink-raw: #eb3081;
     --go-pink-tint: #fce6f0;
   }
+
+  /* ---- Gece modu (Tailwind darkMode: ["class"], .dark <html>'e eklenir) ----
+     Marka renkleri (--go-blue, --go-purple, vb.) BİLİNÇLİ OLARAK değişmiyor —
+     logolar ve marka kimliği her iki modda da aynı kalmalı. Sadece zemin/metin
+     ve rozet "tint" renkleri koyu zemine uygun hale getiriliyor. */
+  .dark {
+    --background: 234 44% 8%;
+    --foreground: 228 38% 96%;
+
+    --card: 234 36% 11%;
+    --card-foreground: 228 38% 96%;
+
+    --popover: 234 36% 11%;
+    --popover-foreground: 228 38% 96%;
+
+    --primary: 230 91% 63%;
+    --primary-foreground: 234 44% 8%;
+
+    --secondary: 234 28% 16%;
+    --secondary-foreground: 228 38% 96%;
+
+    --muted: 234 28% 16%;
+    --muted-foreground: 228 14% 66%;
+
+    --accent: 234 32% 18%;
+    --accent-foreground: 230 91% 68%;
+
+    --destructive: 9 66% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 234 28% 19%;
+    --input: 234 28% 19%;
+    --ring: 230 91% 63%;
+
+    --rg-bg: #0a0c1e;
+    --rg-surface: #12142e;
+    --rg-surface-alt: #1a1d40;
+    --rg-ink: #f2f3fa;
+    --rg-ink-soft: #b3b6d6;
+    --rg-ink-faint: #7679a3;
+    --rg-line: #262a54;
+
+    --go-blue-tint: #182154;
+    --go-purple-tint: #241653;
+    --go-amber-tint: #3b2c10;
+    --go-green-tint: #163a10;
+    --go-pink-tint: #3a1032;
+  }
 }
 
 @layer base {
@@ -70,6 +118,6 @@
     @apply border-border;
   }
   body {
-    @apply bg-rg-bg text-foreground;
+    @apply bg-rg-bg text-foreground transition-colors duration-150;
   }
 }

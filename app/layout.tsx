@@ -34,13 +34,26 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
+      suppressHydrationWarning
       className={cn(
         inter.variable,
         spaceGrotesk.variable,
         ibmPlexMono.variable
       )}
     >
-      <body className="font-sans antialiased">{children}</body>
+      <head>
+        {/* Tema tercihini boyanmadan ÖNCE uygular — aksi halde önce açık, sonra
+            koyu tema flaşı görünür (next-themes gibi kütüphanelerin yaptığı ile
+            aynı teknik, ek bağımlılık gerektirmiyor). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("rg-theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}if(t==="dark"){document.documentElement.classList.add("dark");}}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body className="font-sans antialiased" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

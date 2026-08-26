@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_LOGO } from "@/lib/product-logos";
+import { Logo } from "@/components/ui/logo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -80,13 +80,7 @@ export default async function ProposalTemplatesPage() {
         {PRODUCT_ORDER.filter((key) => grouped[key]?.length).map((key) => (
           <div key={key} className="flex flex-col gap-3">
             {key !== "genel" && PRODUCT_LOGO[key] ? (
-              <Image
-                src={PRODUCT_LOGO[key].src}
-                alt={PRODUCT_LABEL[key]}
-                width={PRODUCT_LOGO[key].width}
-                height={PRODUCT_LOGO[key].height}
-                className="h-6 w-auto"
-              />
+              <Logo product={key as keyof typeof PRODUCT_LOGO} alt={PRODUCT_LABEL[key]} className="h-6 w-auto" />
             ) : (
               <h2 className="font-display text-[13.5px] font-bold text-rg-ink">Genel Ekosistem</h2>
             )}

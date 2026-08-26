@@ -162,7 +162,7 @@ export function PoolTable({
               required
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -172,7 +172,7 @@ export function PoolTable({
             <input
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -182,7 +182,7 @@ export function PoolTable({
             <select
               value={region}
               onChange={(e) => setRegion(e.target.value as Region)}
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             >
               <option value="" disabled>
                 Seç
@@ -199,7 +199,7 @@ export function PoolTable({
               type="email"
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -209,7 +209,7 @@ export function PoolTable({
             <input
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -220,7 +220,7 @@ export function PoolTable({
               placeholder="fuar, referans, web formu..."
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -230,7 +230,7 @@ export function PoolTable({
             <input
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="col-span-2 flex flex-col gap-1.5">
@@ -240,7 +240,7 @@ export function PoolTable({
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="rounded-[8px] border border-rg-line bg-white px-3 py-2 text-[12.8px] outline-none focus:border-primary"
+              className="rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary"
             />
           </div>
           <div className="col-span-3 flex items-center gap-3 pt-1">

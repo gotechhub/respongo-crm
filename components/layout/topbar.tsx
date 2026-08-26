@@ -18,7 +18,7 @@ export function Topbar({
           <Search className="h-3.5 w-3.5" />
           Ara...
         </div>
-        <div className="flex overflow-hidden rounded-[10px] border border-rg-line bg-white">
+        <div className="flex overflow-hidden rounded-[10px] border border-rg-line bg-rg-surface">
           <span className="bg-golms-tint px-[11px] py-2 text-[11.5px] font-semibold text-golms">
             TR
           </span>

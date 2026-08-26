@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { navGroups } from "@/lib/nav-config";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_LABELS_TR, REGION_LABELS_TR, type ProfileRow } from "@/lib/roles";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const ecoDots = [
   { key: "golms", className: "bg-golms" },
@@ -124,6 +125,7 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
               {regionLabel}
             </div>
           </div>
+          <ThemeToggle />
           <button
             onClick={handleSignOut}
             title="Çıkış yap"
