@@ -45,6 +45,12 @@ export const navGroups: NavGroup[] = [
         phase: "beta",
       },
       {
+        label: "Teklif Şablonları",
+        href: "/sales/proposal-templates",
+        icon: BookOpen,
+        phase: "beta",
+      },
+      {
         label: "Fiyat Listeleri",
         href: "/sales/price-lists",
         icon: Wallet,

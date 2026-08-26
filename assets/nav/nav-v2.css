@@ -1,0 +1,255 @@
+/* ===========================================================================
+   RESPONGO 2026 — Mega menü + mobil menü v2
+   Tüm sayfalarda ortak. Sayfa içi <style> bloğundan SONRA yüklenir.
+   =========================================================================== */
+
+/* ---------- üst bar ---------- */
+.header{background:rgba(255,255,255,.9);backdrop-filter:saturate(180%) blur(18px)}
+.nav-wrap{gap:26px}
+.main-nav{gap:0}
+.main-nav>li{position:relative}
+.main-nav>li>button{padding:10px 15px;letter-spacing:-.01em}
+.main-nav>li>button.cur{color:var(--blue)}
+.main-nav>li>button.cur::after{content:"";position:absolute;left:15px;right:15px;bottom:-18px;height:2px;border-radius:2px;background:var(--blue)}
+
+/* ---------- ürün sayfalarında kaydırma davranışı: aşağı inince üst menü
+   gizlenir, alt menü (subnav) sayfanın en üstüne yapışır; yukarı çıkınca
+   üst menü geri gelir. body.rsp-hide-header nav-v2.js tarafından yönetilir. */
+.header{transition:transform .28s ease,box-shadow .28s ease}
+body.rsp-hide-header .header{transform:translateY(-100%);box-shadow:none}
+.subnav{transition:top .28s ease}
+body.rsp-hide-header .subnav{top:0}
+@media (prefers-reduced-motion:reduce){.header{transition:none}.subnav{transition:none}}
+
+/* ---------- mega panel ---------- */
+.mega{border:1px solid var(--line);border-top:0;border-radius:0 0 26px 26px;box-shadow:0 34px 74px -22px rgba(6,16,60,.30)}
+.mega-inner{padding:34px 32px 26px;gap:34px}
+.mega-label{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.mega-label::before{content:"";width:15px;height:2px;border-radius:2px;background:var(--blue);flex:0 0 15px}
+
+/* ürün gezgini — solda ürün seçimi, sağda yalnız seçili ürünün detayları */
+#mega-urunler{max-height:none;overflow:hidden}
+#mega-urunler .mega-products{display:block;padding:22px 32px 26px}
+.product-mega-label{margin-bottom:12px}
+.product-explorer{display:grid;grid-template-columns:320px minmax(0,1fr);height:372px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
+.product-tabs{display:grid;grid-template-rows:repeat(5,1fr);gap:4px;padding:10px;background:var(--surface);border-right:1px solid var(--line)}
+.prod-tab{position:relative;width:100%;min-width:0;display:grid;grid-template-columns:54px minmax(0,1fr) 18px;align-items:center;gap:10px;padding:7px 14px 7px 10px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.prod-tab::before{content:"";position:absolute;left:-1px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--pa,var(--blue));opacity:0}
+.prod-tab.active{background:#fff;border-color:var(--line);box-shadow:0 8px 22px -15px rgba(6,16,60,.36)}
+.prod-tab.active::before{opacity:1}
+.prod-tab:focus-visible{outline:2px solid var(--pa,var(--blue));outline-offset:1px}
+.prod-tab-symbol,.m-prod-symbol{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:1px solid color-mix(in srgb,var(--pa,var(--blue)) 22%,#dce3f2);border-radius:12px;background:color-mix(in srgb,var(--pa,var(--blue)) 9%,#fff);color:var(--pa,var(--blue));flex:0 0 44px}
+.prod-tab-symbol svg,.m-prod-symbol svg{width:23px;height:23px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.prod-tab-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
+.prod-tab-copy b{font-size:14px;font-weight:750;line-height:1.2;color:var(--ink)}
+.prod-tab-copy small{font-size:11px;font-weight:600;line-height:1.3;color:var(--text-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod-tab-arrow{font-size:24px;line-height:1;color:var(--text-soft)}
+.prod-tab.active .prod-tab-arrow{color:var(--pa,var(--blue))}
+.product-panels{min-width:0;background:#fff}
+.prod-panel{height:100%;display:flex;flex-direction:column;padding:20px 28px 18px}
+.prod-panel[hidden]{display:none}
+.prod-panel-head{height:116px;flex:0 0 116px;padding-bottom:11px;border-bottom:1px solid var(--line)}
+.prod-panel-brand{display:flex;flex-direction:column;align-items:flex-start;margin-bottom:5px}
+.prod-panel-logo-wrap{position:relative;width:180px;height:38px;display:flex;align-items:center;justify-content:flex-start;overflow:hidden}
+.prod-panel-logo{position:static !important;display:block;width:auto !important;height:auto !important;max-width:100%;max-height:100%;object-fit:contain}
+.prod-panel-kicker{display:block;margin-top:3px;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft)}
+.prod-discover{display:inline-flex;align-items:center;gap:9px;font-size:21px;line-height:1.25;font-weight:800;letter-spacing:-.025em;color:var(--ink)}
+.prod-discover:hover{color:var(--blue);text-decoration:none}
+.prod-panel-head p{margin-top:4px;font-size:13px;line-height:1.4;color:var(--text-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod-detail-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:40px;gap:6px;margin-top:10px}
+.prod-detail-link{min-width:0;height:40px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:13px;font-weight:700;transition:background .16s,border-color .16s,color .16s}
+.prod-detail-link:hover{background:var(--surface);border-color:var(--pa,var(--blue));color:var(--blue);text-decoration:none}
+.prod-panel-cta{min-height:58px;display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:auto;padding:10px 16px;border-radius:12px;background:var(--surface);color:var(--ink)}
+.prod-panel-cta:hover{background:var(--blue-soft);color:var(--blue);text-decoration:none}
+.prod-panel-cta>span{display:flex;flex-direction:column;gap:2px}
+.prod-panel-cta b{font-size:13px}
+.prod-panel-cta small{font-size:11px;color:var(--text-soft)}
+.prod-panel-cta strong{flex:0 0 auto;font-size:12.5px;color:var(--blue)}
+
+/* görselli tanıtım paneli */
+.mega-feature{padding:0;overflow:hidden}
+.mf-img{display:block;width:100%;height:126px;object-fit:cover}
+.mf-body{padding:20px 24px 24px;display:flex;flex-direction:column;flex:1}
+.mega-feature h4{font-size:18.5px;line-height:1.3;margin-bottom:8px}
+.mega-feature p{font-size:13.5px;margin-bottom:18px}
+.mega-feature .btn{margin-top:auto;align-self:flex-start}
+
+/* alt kısayol şeridi */
+.mega-foot{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:2px;padding-top:16px;border-top:1px solid var(--line)}
+.mega-foot .mf-k{font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-soft);margin-right:6px}
+.mega-foot a{font-size:13px;font-weight:700;color:var(--ink);padding:7px 13px;border:1px solid var(--line);border-radius:999px;transition:.16s}
+.mega-foot a:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-soft);text-decoration:none}
+
+/* çözümler, kaynaklar ve şirket — konuya özel Respongo mavi ikonları */
+#mega-cozumler,#mega-kaynaklar,#mega-sirket{max-height:none;overflow:hidden}
+.menu-item-icon{width:40px;height:40px;display:grid;place-items:center;border:1px solid #c9d5ff;border-radius:11px;background:var(--blue-soft);color:var(--blue);flex:0 0 40px;transition:background .18s,border-color .18s,color .18s}
+.menu-item-icon svg{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.solution-icon-col ul{gap:2px}
+#mega-cozumler .solution-icon-col ul a.solution-icon-link{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:11px;min-height:52px;margin:0;padding:6px 8px;border:1px solid transparent;border-radius:12px;font-size:13.5px;font-weight:700;line-height:1.25;transition:background .18s,border-color .18s,transform .18s}
+#mega-cozumler .solution-icon-link:hover,#mega-cozumler .solution-icon-link:focus-visible{background:var(--blue-soft);border-color:#d4ddff;color:var(--blue);transform:translateY(-1px);text-decoration:none}
+#mega-cozumler .solution-icon-link:hover>.menu-item-icon,#mega-cozumler .solution-icon-link:focus-visible>.menu-item-icon{background:#fff;border-color:var(--blue);color:var(--blue-deep)}
+#mega-kaynaklar .res-item{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:start;gap:12px;min-height:64px;padding:10px 12px;border:1px solid transparent;transition:background .18s,border-color .18s,transform .18s}
+#mega-kaynaklar .res-item>.menu-item-icon{display:grid;color:var(--blue);font-size:initial;line-height:1}
+.res-copy{display:block;min-width:0}
+#mega-kaynaklar .res-item:hover,#mega-kaynaklar .res-item:focus-visible{background:var(--blue-soft);border-color:#d4ddff;transform:translateY(-1px);text-decoration:none}
+#mega-kaynaklar .res-item:hover>.menu-item-icon,#mega-kaynaklar .res-item:focus-visible>.menu-item-icon,.company-icon-link:hover>.menu-item-icon,.company-icon-link:focus-visible>.menu-item-icon{background:#fff;border-color:var(--blue);color:var(--blue-deep)}
+.company-icon-col ul{gap:2px}
+.company-icon-col ul a.company-icon-link{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:11px;min-height:52px;margin:0;padding:6px 8px;border:1px solid transparent;border-radius:12px;font-size:13.5px;font-weight:700;line-height:1.3;transition:background .18s,border-color .18s,transform .18s}
+.company-icon-col ul a.company-icon-link:hover,.company-icon-col ul a.company-icon-link:focus-visible{background:var(--blue-soft);border-color:#d4ddff;color:var(--blue);transform:translateY(-1px);text-decoration:none}
+
+/* müşteri hikâyeleri — isEazy esintili iki kademeli logo düzeni */
+#mega-musteriler{max-height:none;overflow:hidden}
+.mega-customers{grid-template-columns:minmax(0,1fr) 360px;align-items:stretch;gap:36px;padding-top:28px;padding-bottom:28px}
+.customer-menu-main{min-width:0}
+.customer-story-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.customer-story-logo{height:76px;display:flex;align-items:center;justify-content:center;padding:14px 18px;border:1px solid var(--line);border-radius:14px;background:#fff;transition:transform .18s,border-color .18s,background .18s,box-shadow .18s}
+.customer-story-logo img{display:block;width:auto;height:auto;max-width:154px;max-height:44px;object-fit:contain}
+.customer-story-logo:hover,.customer-story-logo:focus-visible{background:var(--surface);border-color:#bcc9ff;box-shadow:0 12px 24px -20px rgba(6,16,60,.45);transform:translateY(-2px);text-decoration:none}
+.customer-all-link{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:5px 2px;color:var(--ink);font-size:13.5px;font-weight:800}
+.customer-all-link:hover{color:var(--blue);text-decoration:none}
+.customer-trust-copy{margin:14px 0 10px;color:var(--text);font-size:13.5px;font-style:italic;line-height:1.45}
+.customer-trust-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;gap:18px}
+.customer-trust-logo{height:44px;min-width:0;display:flex;align-items:center;justify-content:center;padding:4px;filter:grayscale(1);opacity:.65;transition:filter .18s,opacity .18s,transform .18s}
+.customer-trust-logo img{display:block;width:auto;height:auto;max-width:112px;max-height:32px;object-fit:contain}
+.customer-trust-logo:hover,.customer-trust-logo:focus-visible{filter:none;opacity:1;transform:translateY(-1px);text-decoration:none}
+.mega-customers .mega-feature{min-height:0}
+.mega-customers .mf-body{padding:18px 22px 20px}
+.mega-customers .mega-feature p{margin-bottom:14px}
+.res-item b{font-size:14.5px}
+
+/* ---------- mobil menü ---------- */
+.mobile-menu{padding:0;background:#fff}
+.m-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line)}
+.m-head img{height:32px;width:auto}
+.m-close{width:44px;height:44px;flex:0 0 44px;border:0;border-radius:13px;background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center}
+.m-body{padding:6px 20px 130px}
+.m-group>button{padding:16px 2px;font-size:16.5px}
+.m-panel{padding:0 2px 14px}
+.m-panel>a{display:block;padding:10px 0;font-size:14.5px;font-weight:600;color:var(--text)}
+.m-panel .mega-label{margin:16px 0 4px}
+.m-prod{border-bottom:1px solid var(--line)}
+.m-prod:last-child{border-bottom:0}
+.m-prod-toggle{position:relative;width:100%;display:grid;grid-template-columns:54px minmax(0,1fr) 18px;align-items:center;gap:8px;padding:10px 2px 10px 8px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.m-prod-toggle::before{content:"";position:absolute;left:-8px;top:11px;bottom:11px;width:3px;border-radius:0 3px 3px 0;background:var(--pa,var(--blue));opacity:0}
+.m-prod.open .m-prod-toggle::before{opacity:1}
+.m-prod-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
+.m-prod-copy b{font-size:13px;font-weight:750;line-height:1.2;color:var(--ink)}
+.m-prod-copy small{font-size:10.5px;font-weight:650;line-height:1.3;color:var(--text-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-prod-toggle:focus-visible{outline:2px solid var(--pa,var(--blue));outline-offset:2px;border-radius:8px}
+.m-prod-caret{width:8px;height:8px;border-right:1.8px solid currentColor;border-bottom:1.8px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .18s}
+.m-prod.open .m-prod-caret{transform:rotate(225deg) translate(-1px,-1px);color:var(--pa,var(--blue))}
+.m-sub{padding:0 0 12px 8px}
+.m-sub[hidden]{display:none}
+.m-prod-links{display:flex;flex-wrap:wrap;gap:6px}
+.m-prod-links a{font-size:12px;font-weight:700;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:7px 10px;border-radius:8px}
+.m-quick{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 8px}
+.m-quick a{font-size:13.5px;font-weight:700;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:9px 14px}
+.m-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;color:var(--text-soft)}
+.m-ctas{position:fixed;left:0;right:0;bottom:0;z-index:4;flex-direction:row;gap:10px;margin:0;padding:13px 20px;background:#fff;border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(6,16,60,.09)}
+.m-ctas .btn{flex:1;justify-content:center;text-align:center}
+
+@media(max-width:1180px){.mega-inner{padding:28px 24px 22px}#mega-urunler .mega-products{padding:20px 24px 24px}.product-explorer{grid-template-columns:290px minmax(0,1fr)}.prod-tab{grid-template-columns:52px minmax(0,1fr) 16px;gap:8px;padding-left:9px}.prod-panel{padding:20px 24px 18px}}
+@media(max-width:1100px){.mega{display:none}}
+@media(prefers-reduced-motion:reduce){.mega,.prod-tab,.prod-tab::before,.prod-tab-arrow,.prod-detail-link,.m-prod-caret,.mega-foot a{transition:none}}
+
+/* ---------- ürüne özel renk: alt menü (subnav) butonları, ana sayfa ürün
+   sekmeleri ve sekme panelindeki CTA — her biri kendi ürün rengini alır.
+   --pb: buton için güvenli (kontrastlı) renk, --pbi: buton yazı rengi. */
+.subnav .btn-primary,.tab-panel .btn-primary{background:var(--pb,var(--blue)) !important;border-color:var(--pb,var(--blue)) !important;color:var(--pbi,#fff) !important}
+/* hover'da ürün rengi korunur; aksi hâlde sayfa geneli .btn-primary:hover
+   arka planı maviye çevirip yazıyı okunmaz hâle getiriyordu */
+.subnav .btn-primary:hover,.subnav .btn-primary:focus,
+.tab-panel .btn-primary:hover,.tab-panel .btn-primary:focus{
+  background:var(--pb,var(--blue)) !important;border-color:var(--pb,var(--blue)) !important;
+  color:var(--pbi,#fff) !important;filter:brightness(.93)}
+/* metin renkleri okunabilir tonu (--accent-ink) kullanır; --pb açık/sarı
+   olduğunda beyaz zeminde okunmuyordu */
+.subnav .btn-outline{color:var(--accent-ink,var(--blue));border-color:var(--accent-ink,var(--blue))}
+.subnav .btn-outline:hover,.subnav .btn-outline:focus{background:var(--accent-ink,var(--blue));border-color:var(--accent-ink,var(--blue));color:#fff}
+.tabs-nav button[aria-selected="true"]{background:var(--pb,var(--blue)) !important;border-color:var(--pb,var(--blue)) !important;color:var(--pbi,#fff) !important;box-shadow:0 8px 20px -4px var(--pb,rgba(10,46,220,.25)) !important}
+
+/* ---------- üst menü CTA'ları hep marka mavisi ---------- */
+.header .btn-primary{background:var(--blue,#0A2EDC) !important;border-color:var(--blue,#0A2EDC) !important;color:#fff !important}
+.header .btn-primary:hover,.header .btn-primary:focus{background:var(--blue,#0A2EDC) !important;border-color:var(--blue,#0A2EDC) !important;color:#fff !important;filter:none !important}
+.header .btn-primary.cur-link{color:#fff !important;font-weight:600 !important}
+
+/* ---------- yukarı çık butonu ---------- */
+#rsp-top{position:fixed;right:24px;bottom:24px;z-index:9990;width:48px;height:48px;border:0;border-radius:50%;background:var(--blue,#0A2EDC);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px -6px rgba(4,11,43,.35);opacity:0;transform:translateY(18px);pointer-events:none;transition:opacity .3s ease,transform .3s ease}
+#rsp-top.show{opacity:1;transform:translateY(0);pointer-events:auto}
+#rsp-top:hover{background:#081EB3}
+#rsp-top:focus-visible{outline:3px solid rgba(10,46,220,.4);outline-offset:2px}
+#rsp-top svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:768px){#rsp-top{right:16px;bottom:16px;width:44px;height:44px}}
+@media(prefers-reduced-motion:reduce){#rsp-top{transition:none}}
+
+/* ---------- footer logosu ---------- */
+.footer-brand img{height:60px !important;width:auto !important}
+.footer-soc2-nowrap{white-space:nowrap}
+@media(max-width:680px){.footer-soc2-nowrap{white-space:normal}}
+
+/* Page-level responsive safeguards shared by the static prototypes. */
+html,body{max-width:100%;overflow-x:clip}
+.marquee{width:100%;max-width:100vw;overflow:clip!important;contain:paint}
+.subnav-wrap{max-width:100%;overflow:hidden}
+.subnav-links{min-width:0}
+.catalog-stats-bar{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1100px){.catalog-stats-bar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){
+  .course-detail-grid,.contact-grid,.demo-hero-grid{grid-template-columns:minmax(0,1fr)!important;gap:34px!important}
+  .legal-grid{grid-template-columns:minmax(0,1fr)!important;gap:28px!important}
+}
+@media(max-width:680px){.catalog-stats-bar{grid-template-columns:minmax(0,1fr)}}
+
+/* ===== CANONICAL ENTEGRASYON TABLOSU (site genelinde tek kaynak) ===== */
+.gint{background:#fff}
+.gint-list{display:flex;flex-direction:column;gap:14px;max-width:1160px;margin:0 auto}
+.gint-row{border:1px solid #DDE3F5;border-radius:18px;background:#fff;box-shadow:0 8px 28px rgba(4,11,43,.06);overflow:hidden}
+.gint-head{width:100%;display:grid;grid-template-columns:48px 285px 1fr;gap:18px;align-items:center;padding:24px 28px;text-align:left;color:var(--ink,#040B2B)}
+.gint-icon{width:46px;height:46px;border:1px solid #DCE2F2;border-radius:13px;background:#F8F9FD;display:flex;align-items:center;justify-content:center;color:var(--ink,#040B2B);flex-shrink:0}
+.gint-icon svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.gint-titles strong{display:block;font-size:16px;margin-bottom:2px}
+.gint-titles span{display:block;font-size:12.5px;color:var(--text-soft,#6B7691)}
+.gint-logos{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:20px 32px;min-width:0}
+.gint-logos img{width:auto;height:auto;max-height:80px;max-width:220px;object-fit:contain;flex:0 0 auto}
+.gint-more{display:flex;justify-content:center;margin-top:32px}
+@media (max-width:1100px){
+  .gint-head{grid-template-columns:48px 240px 1fr;padding:22px 24px}
+  .gint-logos{gap:16px 24px}
+  .gint-logos img{max-height:68px;max-width:180px}
+}
+@media (max-width:820px){
+  .gint-head{grid-template-columns:44px 1fr;padding:20px}
+  .gint-logos{grid-column:1/-1;justify-content:flex-start;padding-left:62px;margin-top:16px}
+}
+@media (max-width:680px){
+  .gint-head{grid-template-columns:42px 1fr;gap:12px;padding:16px}
+  .gint-icon{width:42px;height:42px}
+  .gint-logos{padding-left:54px;gap:14px 18px}
+  .gint-logos img{max-height:52px;max-width:130px}
+}
+
+/* ---------- alt menü sekmeleri: taşmadan tek satırda sığsın ----------
+   Şerit yatay kaydırılabilir olduğu için taşınca ya ilk ya son sekme
+   kırpılıyordu. Marka logosunu sınırlayıp sekmeleri kademeli daraltarak
+   içeriğin gerçekten sığmasını sağlıyoruz. */
+.subnav-wrap{gap:18px}
+.subnav-brand{flex:0 0 auto}
+.subnav-brand img{max-width:190px;object-fit:contain;object-position:left center}
+.subnav-links{padding:6px 0;gap:2px;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior-x:contain;scroll-padding-inline:14px;scroll-behavior:smooth}
+.subnav-links::-webkit-scrollbar{display:none}
+/* sondaki esnek boşluk: son sekme kutunun sınırına yapışıp kırpılmasın */
+.subnav-links::after{content:"";flex:0 0 14px;height:1px}
+.subnav-links a{flex:0 0 auto;line-height:1.35}
+.subnav .btn{flex:0 0 auto}
+/* kademeli daraltma */
+@media (max-width:1320px){
+  .subnav-brand img{max-width:168px}
+  .subnav-links a{font-size:13.5px;padding:8px 11px}
+  .subnav .btn{padding:10px 16px;font-size:13.5px}
+}
+@media (max-width:1160px){
+  .subnav-wrap{gap:12px}
+  .subnav-brand img{max-width:150px}
+  .subnav-links a{font-size:13px;padding:8px 9px}
+  .subnav .btn{padding:9px 14px;font-size:13px}
+}
