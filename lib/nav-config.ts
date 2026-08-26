@@ -36,6 +36,8 @@ export const navGroups: NavGroup[] = [
     label: "Satış",
     items: [
       { label: "Müşteri Havuzu", href: "/sales", icon: Users, phase: "beta" },
+      { label: "Müşteri Adayları", href: "/sales/leads", icon: FileText, phase: "beta" },
+      { label: "Müşteriler", href: "/sales/customers", icon: Users, phase: "beta" },
       {
         label: "Teklif Oluştur",
         href: "/sales/proposals/new",
