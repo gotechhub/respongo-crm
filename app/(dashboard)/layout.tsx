@@ -3,6 +3,12 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { createClient } from "@/lib/supabase/server";
 import type { ProfileRow } from "@/lib/roles";
 
+// Bu layout kullanıcının rolünü/bölgesini her istekte veritabanından taze
+// okumalı — Süper Admin bir rol atadığında sonuç anında yansımalı, bir
+// önceki (cache'lenmiş) sayfa gösterilmemeli.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DashboardLayout({
   children,
 }: {
