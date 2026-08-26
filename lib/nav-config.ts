@@ -48,6 +48,12 @@ export const navGroups: NavGroup[] = [
       { label: "Müşteri Adayları", href: "/sales/leads", icon: FileText, phase: "beta" },
       { label: "Müşteriler", href: "/sales/customers", icon: Users, phase: "beta" },
       {
+        label: "Teklifler",
+        href: "/sales/proposals",
+        icon: FileText,
+        phase: "beta",
+      },
+      {
         label: "Teklif Oluştur",
         href: "/sales/proposals/new",
         icon: FileText,
