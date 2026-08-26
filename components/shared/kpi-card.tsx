@@ -30,7 +30,7 @@ export function KpiCard({
           </div>
         </div>
         <svg width="38" height="38" viewBox="0 0 36 36" className="shrink-0">
-          <circle cx="18" cy="18" r="15.5" fill="none" stroke="#EEF0F8" strokeWidth="4" />
+          <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--rg-line)" strokeWidth="4" />
           <circle
             cx="18"
             cy="18"
