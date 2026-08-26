@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ---- shadcn/ui tokens (mapped from Respongo prototip v2 neutrals) ---- */
+    --background: 228 38% 97%;
+    --foreground: 236 44% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 236 44% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 236 44% 13%;
+
+    --primary: 230 91% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 55% 96%;
+    --secondary-foreground: 236 44% 13%;
+
+    --muted: 225 55% 96%;
+    --muted-foreground: 234 13% 41%;
+
+    --accent: 229 85% 96%;
+    --accent-foreground: 230 91% 45%;
+
+    --destructive: 9 66% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 231 32% 92%;
+    --input: 231 32% 92%;
+    --ring: 230 91% 45%;
+
+    --radius: 14px;
+
+    /* ---- gerçek Respongo marka renkleri (prototip v2 / logo paketi) ---- */
+    --rg-bg: #f6f7fb;
+    --rg-surface: #ffffff;
+    --rg-surface-alt: #eef1fa;
+    --rg-ink: #12142e;
+    --rg-ink-soft: #5b5e77;
+    --rg-ink-faint: #9598b0;
+    --rg-line: #e4e6f1;
+
+    --go-blue: #0a2edc; /* Respongo / GOLMS */
+    --go-blue-deep: #080b33;
+    --go-blue-tint: #e7ebfd;
+
+    --go-purple: #5e17eb; /* GOLXP */
+    --go-purple-tint: #f0e8fe;
+
+    --go-amber: #b9790e; /* GOCATALOG — metin kontrastı için koyulaştırıldı */
+    --go-amber-raw: #ffbd59;
+    --go-amber-tint: #fff3df;
+
+    --go-green: #238f00; /* GOFACTORY — kontrast için koyulaştırıldı */
+    --go-green-raw: #30cc00;
+    --go-green-tint: #e7f8e0;
+
+    --go-pink: #d42574; /* GOTOOLS — kontrast için koyulaştırıldı */
+    --go-pink-raw: #eb3081;
+    --go-pink-tint: #fce6f0;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-rg-bg text-foreground;
+  }
+}
