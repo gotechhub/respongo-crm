@@ -1,5 +1,7 @@
+import Image from "next/image";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
+import { PRODUCT_LOGO } from "@/lib/product-logos";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -54,11 +56,21 @@ export default async function PriceListsPage() {
         {priceLists.map((list) => (
           <div key={list.id} className="overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
             <div className="flex items-center justify-between border-b border-rg-line bg-rg-surface-alt px-4 py-3">
-              <div>
-                <span className="font-display text-[13px] font-bold text-rg-ink">
-                  {PRODUCT_LABEL[list.product] ?? list.product}
-                </span>
-                <span className="ml-2 text-[11.5px] text-rg-ink-faint">{list.name}</span>
+              <div className="flex items-center gap-2.5">
+                {PRODUCT_LOGO[list.product] ? (
+                  <Image
+                    src={PRODUCT_LOGO[list.product].src}
+                    alt={PRODUCT_LABEL[list.product] ?? list.product}
+                    width={PRODUCT_LOGO[list.product].width}
+                    height={PRODUCT_LOGO[list.product].height}
+                    className="h-5 w-auto"
+                  />
+                ) : (
+                  <span className="font-display text-[13px] font-bold text-rg-ink">
+                    {PRODUCT_LABEL[list.product] ?? list.product}
+                  </span>
+                )}
+                <span className="text-[11.5px] text-rg-ink-faint">{list.name}</span>
               </div>
               <span className="text-[11px] font-semibold text-rg-ink-faint">{list.currency}</span>
             </div>

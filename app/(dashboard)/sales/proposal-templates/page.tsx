@@ -1,5 +1,7 @@
+import Image from "next/image";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
+import { PRODUCT_LOGO } from "@/lib/product-logos";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -77,9 +79,17 @@ export default async function ProposalTemplatesPage() {
         )}
         {PRODUCT_ORDER.filter((key) => grouped[key]?.length).map((key) => (
           <div key={key} className="flex flex-col gap-3">
-            <h2 className="font-display text-[13.5px] font-bold text-rg-ink">
-              {key === "genel" ? "Genel Ekosistem" : PRODUCT_LABEL[key]}
-            </h2>
+            {key !== "genel" && PRODUCT_LOGO[key] ? (
+              <Image
+                src={PRODUCT_LOGO[key].src}
+                alt={PRODUCT_LABEL[key]}
+                width={PRODUCT_LOGO[key].width}
+                height={PRODUCT_LOGO[key].height}
+                className="h-6 w-auto"
+              />
+            ) : (
+              <h2 className="font-display text-[13.5px] font-bold text-rg-ink">Genel Ekosistem</h2>
+            )}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {grouped[key].map((t) => (
                 <div

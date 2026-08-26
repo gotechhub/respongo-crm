@@ -1,12 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { navGroups } from "@/lib/nav-config";
-import { createClient } from "@/lib/supabase/client";
-import { ROLE_LABELS_TR, REGION_LABELS_TR, type ProfileRow } from "@/lib/roles";
 
 const ecoDots = [
   { key: "golms", className: "bg-golms" },
@@ -16,32 +14,20 @@ const ecoDots = [
   { key: "gotools", className: "bg-gotools-raw" },
 ];
 
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
-}
-
-export function Sidebar({ profile }: { profile: ProfileRow }) {
+export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const displayName = profile.full_name || profile.email;
-  const roleLabel = profile.role ? ROLE_LABELS_TR[profile.role] : "Rol atanmadı";
-  const regionLabel = profile.region ? ` · ${REGION_LABELS_TR[profile.region]}` : "";
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   return (
     <aside className="sticky top-0 flex h-screen w-[252px] flex-col bg-gradient-to-br from-sidebar-from via-sidebar-via to-sidebar-to px-4 pb-4 pt-6 text-sidebar-fg">
       <div className="px-1.5 pb-4">
-        <span className="font-display text-lg font-bold tracking-tight">
-          Respongo
-        </span>
+        <Image
+          src="/logos/respongo-white.avif"
+          alt="Respongo"
+          width={288}
+          height={110}
+          priority
+          className="h-8 w-auto"
+        />
         <div className="mt-2 text-[10px] font-semibold uppercase tracking-[1.2px] text-sidebar-fg-faint">
           CRM · Beta
         </div>
@@ -107,24 +93,12 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
       <div className="mt-auto border-t border-white/[.08] pt-3.5">
         <div className="flex items-center gap-2.5 p-1.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-golxp to-golms font-display text-xs font-bold text-white">
-            {initialsOf(displayName)}
+            SG
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[12.5px] font-semibold text-white">
-              {displayName}
-            </div>
-            <div className="truncate text-[10.5px] text-sidebar-fg-faint">
-              {roleLabel}
-              {regionLabel}
-            </div>
+          <div>
+            <div className="text-[12.5px] font-semibold text-white">Selçuk Gönder</div>
+            <div className="text-[10.5px] text-sidebar-fg-faint">Founder &amp; CEO</div>
           </div>
-          <button
-            onClick={handleSignOut}
-            title="Çıkış yap"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-sidebar-fg-faint transition-colors hover:bg-white/[.08] hover:text-white"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-          </button>
         </div>
       </div>
     </aside>
