@@ -75,7 +75,7 @@ export default function LoginPage() {
         )}
       </div>
       <p className="text-[11.5px] text-rg-ink-faint">
-        Hesabın yoksa Süper Admin'in seni davet etmesi gerekiyor.
+        Hesabın yoksa Süper Admin&apos;in seni davet etmesi gerekiyor.
       </p>
     </main>
   );
