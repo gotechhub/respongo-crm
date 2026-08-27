@@ -1,20 +1,52 @@
+import { Suspense } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
+import type { Region, UserRole } from "@/lib/roles";
+import { parsePagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
+import { RegionFilter } from "@/components/ui/region-filter";
 import { LeadsTable, type LeadRow } from "./leads-table";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function LeadsPage() {
+export default async function LeadsPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
   const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { data: leads } = await supabase
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user?.id ?? "")
+    .single();
+  const isFounder = (callerProfile as { role: UserRole | null } | null)?.role === "founder";
+
+  const { page, pageSize, from, to } = parsePagination(searchParams);
+  const q = typeof searchParams.q === "string" ? searchParams.q.trim() : "";
+  const regionFilter = typeof searchParams.region === "string" ? (searchParams.region as Region) : "";
+
+  let query = supabase
     .from("leads")
     .select(
-      "id, company_name, contact_name, contact_email, status, value_estimate, currency, region, owner_id, created_at"
+      "id, company_name, contact_name, contact_email, status, value_estimate, currency, region, owner_id, created_at",
+      { count: "exact" }
     )
     .order("created_at", { ascending: false });
 
+  if (q) {
+    query = query.or(`company_name.ilike.%${q}%,contact_name.ilike.%${q}%,contact_email.ilike.%${q}%`);
+  }
+  if (regionFilter) {
+    query = query.eq("region", regionFilter);
+  }
+
+  const { data: leads, count } = await query.range(from, to);
   const rows = (leads ?? []) as LeadRow[];
 
   const ownerIds = Array.from(new Set(rows.map((r) => r.owner_id).filter(Boolean))) as string[];
@@ -35,7 +67,17 @@ export default async function LeadsPage() {
         title="Müşteri Adayları"
         subtitle="Havuzdan gelen ya da doğrudan açılan lead'ler — pipeline durumunu buradan yönet."
       />
-      <LeadsTable rows={rows} ownerNames={ownerNames} />
+      <div className="mb-3 flex items-center gap-2.5">
+        <Suspense fallback={<div className="h-[38px] w-[240px]" />}>
+          <SearchInput placeholder="Firma, kişi veya e-posta ara..." />
+        </Suspense>
+        {isFounder && (
+          <Suspense fallback={<div className="h-[38px] w-[140px]" />}>
+            <RegionFilter />
+          </Suspense>
+        )}
+      </div>
+      <LeadsTable rows={rows} ownerNames={ownerNames} pagination={{ totalCount: count ?? 0, page, pageSize }} />
     </>
   );
 }

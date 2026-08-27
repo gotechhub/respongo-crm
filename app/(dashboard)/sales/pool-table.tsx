@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { Suspense, useState, useTransition, type FormEvent } from "react";
 import { ArrowRight, Loader2, Plus, X } from "lucide-react";
 import { REGION_LABELS_TR, type Region } from "@/lib/roles";
+import { Pagination } from "@/components/ui/pagination";
 import { convertPoolToLead, createPoolEntry } from "./actions";
 
 export type PoolRow = {
@@ -83,10 +84,12 @@ export function PoolTable({
   rows,
   ownerNames,
   defaultRegion,
+  pagination,
 }: {
   rows: PoolRow[];
   ownerNames: Record<string, string>;
   defaultRegion: Region | null;
+  pagination?: { totalCount: number; page: number; pageSize: number };
 }) {
   const [showForm, setShowForm] = useState(false);
   const [companyName, setCompanyName] = useState("");
@@ -257,7 +260,8 @@ export function PoolTable({
         </form>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
+      <div className="overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
+        <div className="overflow-x-auto">
         <table className="w-full min-w-[820px] border-collapse">
           <thead>
             <tr className="bg-rg-surface-alt text-left">
@@ -294,6 +298,12 @@ export function PoolTable({
             )}
           </tbody>
         </table>
+        </div>
+        {pagination && (
+          <Suspense fallback={<div className="h-[52px]" />}>
+            <Pagination totalCount={pagination.totalCount} page={pagination.page} pageSize={pagination.pageSize} />
+          </Suspense>
+        )}
       </div>
     </div>
   );

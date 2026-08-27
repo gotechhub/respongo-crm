@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_LOGO } from "@/lib/product-logos";
 import { Logo } from "@/components/ui/logo";
+import { SearchInput } from "@/components/ui/search-input";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,7 +33,11 @@ type PriceList = {
   price_list_items: PriceListItem[];
 };
 
-export default async function PriceListsPage() {
+export default async function PriceListsPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
   const supabase = createClient();
 
   const { data } = await supabase
@@ -39,7 +45,23 @@ export default async function PriceListsPage() {
     .select("id, name, product, currency, is_active, price_list_items(id, name, description, unit, unit_price)")
     .order("product", { ascending: true });
 
-  const priceLists = (data ?? []) as PriceList[];
+  const allPriceLists = (data ?? []) as PriceList[];
+
+  const q = typeof searchParams.q === "string" ? searchParams.q.trim().toLowerCase() : "";
+  const priceLists = q
+    ? allPriceLists
+        .map((list) => {
+          const listMatches =
+            list.name.toLowerCase().includes(q) || (PRODUCT_LABEL[list.product] ?? list.product).toLowerCase().includes(q);
+          const items = listMatches
+            ? list.price_list_items
+            : list.price_list_items.filter(
+                (item) => item.name.toLowerCase().includes(q) || (item.description ?? "").toLowerCase().includes(q)
+              );
+          return { ...list, price_list_items: items };
+        })
+        .filter((list) => list.price_list_items.length > 0)
+    : allPriceLists;
 
   return (
     <>
@@ -47,10 +69,15 @@ export default async function PriceListsPage() {
         title="Fiyat Listeleri"
         subtitle="Ürün kataloğu respongo.com'daki güncel ürün yapısından alındı — birim fiyatlar henüz girilmedi (0), her ürün kuruma özel teklifle satılıyor."
       />
+      <div className="mb-3">
+        <Suspense fallback={<div className="h-[38px] w-[240px]" />}>
+          <SearchInput placeholder="Ürün veya kalem ara..." />
+        </Suspense>
+      </div>
       <div className="flex flex-col gap-6">
         {priceLists.length === 0 && (
           <div className="rounded-2xl border-[1.5px] border-dashed border-rg-line p-10 text-center text-[11.5px] text-rg-ink-faint">
-            Henüz fiyat listesi yok.
+            {q ? "Aramanla eşleşen ürün veya kalem yok." : "Henüz fiyat listesi yok."}
           </div>
         )}
         {priceLists.map((list) => (
