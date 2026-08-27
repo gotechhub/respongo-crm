@@ -3,9 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
-import { REGION_LABELS_TR, type Region } from "@/lib/roles";
+import { REGION_LABELS_TR, type Region, type UserRole } from "@/lib/roles";
 import { ProposalStatusPanel } from "./proposal-status-panel";
-import type { ProposalStatus } from "../actions";
+import { ProposalApprovalPanel } from "./proposal-approval-panel";
+import { ProposalEditor, type EditableProposalItem, type PriceListForEditor } from "./proposal-editor";
+import type { ProductKey, ProposalStatus } from "../actions";
 
 const PRODUCT_LABEL: Record<string, string> = {
   golms: "GOLMS",
@@ -48,27 +50,40 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
     notFound();
   }
 
-  const [{ data: items }, { data: target }, { data: template }] = await Promise.all([
-    supabase
-      .from("proposal_items")
-      .select("id, product, description, quantity, unit_price, discount_percent, line_total")
-      .eq("proposal_id", params.id)
-      .order("created_at", { ascending: true }),
-    proposal.lead_id
-      ? supabase.from("leads").select("id, company_name, contact_name, contact_email").eq("id", proposal.lead_id).single()
-      : proposal.customer_id
-        ? supabase
-            .from("customers")
-            .select("id, company_name, primary_contact_name, primary_contact_email")
-            .eq("id", proposal.customer_id)
-            .single()
+  const [{ data: callerProfile }, { data: items }, { data: target }, { data: template }, { data: priceListRows }] =
+    await Promise.all([
+      supabase.from("profiles").select("role").eq("id", user.id).single(),
+      supabase
+        .from("proposal_items")
+        .select("id, product, description, quantity, unit_price, discount_percent, line_total, price_list_item_id")
+        .eq("proposal_id", params.id)
+        .order("created_at", { ascending: true }),
+      proposal.lead_id
+        ? supabase.from("leads").select("id, company_name, contact_name, contact_email").eq("id", proposal.lead_id).single()
+        : proposal.customer_id
+          ? supabase
+              .from("customers")
+              .select("id, company_name, primary_contact_name, primary_contact_email")
+              .eq("id", proposal.customer_id)
+              .single()
+          : Promise.resolve({ data: null }),
+      proposal.template_id
+        ? supabase.from("proposal_templates").select("id, name, language").eq("id", proposal.template_id).single()
         : Promise.resolve({ data: null }),
-    proposal.template_id
-      ? supabase.from("proposal_templates").select("id, name, language").eq("id", proposal.template_id).single()
-      : Promise.resolve({ data: null }),
-  ]);
+      supabase
+        .from("price_lists")
+        .select("id, name, product, price_list_items(id, name, description, unit, unit_price)")
+        .eq("is_active", true)
+        .eq("currency", proposal.currency)
+        .order("product", { ascending: true }),
+    ]);
 
-  const ownerIds = [proposal.owner_id, proposal.created_by].filter(Boolean) as string[];
+  const isFounder = (callerProfile as { role: UserRole | null } | null)?.role === "founder";
+  const isOwner = proposal.owner_id === user.id;
+  const status = proposal.status as ProposalStatus;
+  const isEditable = (status === "draft" || status === "revision_requested") && (isOwner || isFounder);
+
+  const ownerIds = [proposal.owner_id, proposal.created_by, proposal.approved_by].filter(Boolean) as string[];
   const ownerNames: Record<string, string> = {};
   if (ownerIds.length > 0) {
     const { data: owners } = await supabase
@@ -91,6 +106,30 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
   const targetContactName = targetRow?.contact_name ?? targetRow?.primary_contact_name ?? null;
   const targetContactEmail = targetRow?.contact_email ?? targetRow?.primary_contact_email ?? null;
 
+  const editableItems: EditableProposalItem[] = (items ?? []).map((i) => ({
+    id: i.id,
+    product: i.product as ProductKey,
+    description: i.description,
+    quantity: i.quantity,
+    unit_price: i.unit_price,
+    discount_percent: i.discount_percent,
+    line_total: i.line_total,
+    price_list_item_id: i.price_list_item_id,
+  }));
+
+  const priceListsForEditor: PriceListForEditor[] = (priceListRows ?? []).map((pl) => ({
+    id: pl.id as string,
+    name: pl.name as string,
+    product: pl.product as ProductKey,
+    items: ((pl.price_list_items ?? []) as PriceListForEditor["items"]).map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      unit: item.unit,
+      unit_price: item.unit_price,
+    })),
+  }));
+
   return (
     <>
       <Link
@@ -102,7 +141,16 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
       </Link>
       <Topbar title={proposal.title} subtitle={targetRow?.company_name ?? "Teklif detayı"} />
 
-      <ProposalStatusPanel proposalId={proposal.id} initialStatus={proposal.status as ProposalStatus} />
+      <ProposalStatusPanel proposalId={proposal.id} initialStatus={status} />
+
+      <div className="mt-3">
+        <ProposalApprovalPanel
+          proposalId={proposal.id}
+          status={status}
+          approvalNote={proposal.approval_note as string | null}
+          isFounder={isFounder}
+        />
+      </div>
 
       <div className="mt-5 grid grid-cols-3 gap-5">
         <div className="col-span-2 rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
@@ -119,6 +167,12 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
             <InfoField label="Sahibi" value={proposal.owner_id ? ownerNames[proposal.owner_id] : "Atanmamış"} />
             <InfoField label="Gönderim Tarihi" value={fmtDate(proposal.sent_at)} />
             <InfoField label="Oluşturma Tarihi" value={fmtDate(proposal.created_at)} />
+            {proposal.approved_by && (
+              <>
+                <InfoField label="Onaylayan" value={ownerNames[proposal.approved_by]} />
+                <InfoField label="Onay Tarihi" value={fmtDate(proposal.approved_at)} />
+              </>
+            )}
           </div>
           {targetHref && (
             <div className="mt-4 border-t border-rg-line pt-4">
@@ -137,59 +191,68 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
         </div>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
-        <div className="border-b border-rg-line px-5 py-3 text-[13px] font-bold text-rg-ink">Kalemler</div>
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-rg-surface-alt text-left">
-              <th className="px-4 py-2.5 text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
-                Kalem
-              </th>
-              <th className="px-4 py-2.5 text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
-                Adet
-              </th>
-              <th className="px-4 py-2.5 text-right text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
-                Birim Fiyat
-              </th>
-              <th className="px-4 py-2.5 text-right text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
-                İskonto
-              </th>
-              <th className="px-4 py-2.5 text-right text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
-                Toplam
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {(items ?? []).map((item) => (
-              <tr key={item.id} className="border-t border-rg-line">
-                <td className="px-4 py-3 text-[12.5px] font-semibold text-rg-ink">
-                  {item.description || "—"}
-                  <span className="ml-1.5 text-[10.5px] font-normal text-rg-ink-faint">
-                    {PRODUCT_LABEL[item.product] ?? item.product}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-[12px] text-rg-ink-soft">{item.quantity}</td>
-                <td className="px-4 py-3 text-right text-[12px] text-rg-ink-soft">
-                  {fmtMoney(item.unit_price, proposal.currency)}
-                </td>
-                <td className="px-4 py-3 text-right text-[12px] text-rg-ink-soft">
-                  {item.discount_percent > 0 ? `%${item.discount_percent}` : "—"}
-                </td>
-                <td className="px-4 py-3 text-right text-[12.5px] font-semibold text-rg-ink">
-                  {fmtMoney(item.line_total, proposal.currency)}
-                </td>
+      {isEditable ? (
+        <ProposalEditor
+          proposalId={proposal.id}
+          currency={proposal.currency}
+          items={editableItems}
+          priceLists={priceListsForEditor}
+        />
+      ) : (
+        <div className="mt-5 overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
+          <div className="border-b border-rg-line px-5 py-3 text-[13px] font-bold text-rg-ink">Kalemler</div>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-rg-surface-alt text-left">
+                <th className="px-4 py-2.5 text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
+                  Kalem
+                </th>
+                <th className="px-4 py-2.5 text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
+                  Adet
+                </th>
+                <th className="px-4 py-2.5 text-right text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
+                  Birim Fiyat
+                </th>
+                <th className="px-4 py-2.5 text-right text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
+                  İskonto
+                </th>
+                <th className="px-4 py-2.5 text-right text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">
+                  Toplam
+                </th>
               </tr>
-            ))}
-            {(items ?? []).length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-[12.5px] text-rg-ink-faint">
-                  Bu teklifte kalem yok.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {(items ?? []).map((item) => (
+                <tr key={item.id} className="border-t border-rg-line">
+                  <td className="px-4 py-3 text-[12.5px] font-semibold text-rg-ink">
+                    {item.description || "—"}
+                    <span className="ml-1.5 text-[10.5px] font-normal text-rg-ink-faint">
+                      {PRODUCT_LABEL[item.product] ?? item.product}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-[12px] text-rg-ink-soft">{item.quantity}</td>
+                  <td className="px-4 py-3 text-right text-[12px] text-rg-ink-soft">
+                    {fmtMoney(item.unit_price, proposal.currency)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-[12px] text-rg-ink-soft">
+                    {item.discount_percent > 0 ? `%${item.discount_percent}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right text-[12.5px] font-semibold text-rg-ink">
+                    {fmtMoney(item.line_total, proposal.currency)}
+                  </td>
+                </tr>
+              ))}
+              {(items ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-[12.5px] text-rg-ink-faint">
+                    Bu teklifte kalem yok.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }

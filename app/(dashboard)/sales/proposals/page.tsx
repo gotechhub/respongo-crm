@@ -24,6 +24,8 @@ type ProposalRow = {
 
 const STATUS_LABEL: Record<ProposalStatus, string> = {
   draft: "Taslak",
+  pending_approval: "Onay Bekliyor",
+  revision_requested: "Revizyon İstendi",
   sent: "Gönderildi",
   accepted: "Kabul Edildi",
   rejected: "Reddedildi",
@@ -32,6 +34,8 @@ const STATUS_LABEL: Record<ProposalStatus, string> = {
 
 const STATUS_CLASS: Record<ProposalStatus, string> = {
   draft: "bg-rg-surface-alt text-rg-ink-faint",
+  pending_approval: "bg-gocatalog-tint text-gocatalog",
+  revision_requested: "bg-gotools-tint text-gotools",
   sent: "bg-golxp-tint text-golxp",
   accepted: "bg-gofactory-tint text-gofactory",
   rejected: "bg-destructive/10 text-destructive",

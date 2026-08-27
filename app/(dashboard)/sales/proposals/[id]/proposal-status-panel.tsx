@@ -7,6 +7,8 @@ import { deleteProposal, updateProposalStatus, type ProposalStatus } from "../ac
 
 const STATUS_LABEL: Record<ProposalStatus, string> = {
   draft: "Taslak",
+  pending_approval: "Onay Bekliyor",
+  revision_requested: "Revizyon İstendi",
   sent: "Gönderildi",
   accepted: "Kabul Edildi",
   rejected: "Reddedildi",
@@ -15,14 +17,23 @@ const STATUS_LABEL: Record<ProposalStatus, string> = {
 
 const STATUS_CLASS: Record<ProposalStatus, string> = {
   draft: "bg-rg-surface-alt text-rg-ink-faint",
+  pending_approval: "bg-gocatalog-tint text-gocatalog",
+  revision_requested: "bg-gotools-tint text-gotools",
   sent: "bg-golxp-tint text-golxp",
   accepted: "bg-gofactory-tint text-gofactory",
   rejected: "bg-destructive/10 text-destructive",
   expired: "bg-rg-surface-alt text-rg-ink-faint",
 };
 
-const NEXT_STATUSES: Record<ProposalStatus, ProposalStatus[]> = {
-  draft: ["sent"],
+// draft ve revision_requested durumundan gönderme artık ProposalEditor'daki
+// "Teklifi Gönder" butonuyla yapılıyor (eşik kontrolü + kalem düzenleme bir
+// arada olduğu için). pending_approval'dan çıkış ProposalApprovalPanel'de
+// (sadece kurucu). Burada sadece "sent" sonrası gerçek müşteri kararı elle
+// işaretleniyor.
+const NEXT_STATUSES: Record<ProposalStatus, Extract<ProposalStatus, "accepted" | "rejected" | "expired">[]> = {
+  draft: [],
+  pending_approval: [],
+  revision_requested: [],
   sent: ["accepted", "rejected", "expired"],
   accepted: [],
   rejected: [],
@@ -35,7 +46,7 @@ export function ProposalStatusPanel({ proposalId, initialStatus }: { proposalId:
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  function handleStatusChange(next: ProposalStatus) {
+  function handleStatusChange(next: Extract<ProposalStatus, "accepted" | "rejected" | "expired">) {
     setError("");
     startTransition(async () => {
       const result = await updateProposalStatus(proposalId, next);
@@ -100,3 +111,5 @@ export function ProposalStatusPanel({ proposalId, initialStatus }: { proposalId:
     </div>
   );
 }
+
+export { STATUS_LABEL as PROPOSAL_STATUS_LABEL, STATUS_CLASS as PROPOSAL_STATUS_CLASS };
