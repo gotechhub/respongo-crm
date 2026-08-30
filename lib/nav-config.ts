@@ -12,6 +12,8 @@ import {
   Building2,
   Contact,
   TrendingUp,
+  Megaphone,
+  Receipt,
 } from "lucide-react";
 
 export type NavItem = {
@@ -82,6 +84,14 @@ export const navGroups: NavGroup[] = [
       { label: "Proje & Görev", href: "/projects", icon: FolderKanban, phase: "beta" },
       { label: "Takvim / Planner", href: "/planner", icon: CalendarClock, phase: "v1" },
     ],
+  },
+  {
+    label: "Pazarlama",
+    items: [{ label: "Kampanyalar", href: "/marketing", icon: Megaphone, phase: "beta" }],
+  },
+  {
+    label: "Finans",
+    items: [{ label: "Faturalar", href: "/finance", icon: Receipt, phase: "beta" }],
   },
   {
     label: "Yönetim",
