@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Megaphone,
   Receipt,
+  KeyRound,
 } from "lucide-react";
 
 export type NavItem = {
@@ -51,6 +52,7 @@ export const navGroups: NavGroup[] = [
       { label: "Müşteri Havuzu", href: "/sales", icon: Users, phase: "beta" },
       { label: "Müşteri Adayları", href: "/sales/leads", icon: FileText, phase: "beta" },
       { label: "Müşteriler", href: "/sales/customers", icon: Users, phase: "beta" },
+      { label: "Lisanslar", href: "/licenses", icon: KeyRound, phase: "beta" },
       {
         label: "Teklifler",
         href: "/sales/proposals",
