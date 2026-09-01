@@ -3,7 +3,12 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import type { ReactElement } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { registerPdfFonts } from "@/lib/pdf/fonts";
-import { ProposalPdfDocument, type ProposalPdfItem, type ProposalPdfTarget } from "@/lib/pdf/proposal-document";
+import {
+  ProposalPdfDocument,
+  type ProposalPdfItem,
+  type ProposalPdfSection,
+  type ProposalPdfTarget,
+} from "@/lib/pdf/proposal-document";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +49,19 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     ownerName = owner ? (owner.full_name as string | null) || (owner.email as string) : null;
   }
 
+  // Teklif Şablonları 2.0 (Faz 5): teklif bir v2 şablona bağlıysa (template_id) o şablonun
+  // bölümlerini (kapak/kapsam/ürün bilgisi/hukuki metin/banka/imza) de PDF'e dahil et.
+  // template_id boşsa (eski teklifler) sections undefined kalır — tek sayfalık eski render korunur.
+  let sections: ProposalPdfSection[] | undefined;
+  if (proposal.template_id) {
+    const { data: sectionRows } = await supabase
+      .from("proposal_template_sections")
+      .select("section_type, legal_region, title_tr, title_en, body_tr, body_en, content")
+      .eq("template_id", proposal.template_id)
+      .order("sort_order", { ascending: true });
+    sections = (sectionRows ?? []) as ProposalPdfSection[];
+  }
+
   registerPdfFonts();
 
   const document = ProposalPdfDocument({
@@ -60,6 +78,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     items: (itemsRaw ?? []) as ProposalPdfItem[],
     target: target as ProposalPdfTarget,
     ownerName,
+    sections,
   }) as ReactElement<DocumentProps>;
 
   const buffer = await renderToBuffer(document);
