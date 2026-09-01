@@ -36,6 +36,12 @@ export function PortalHeader({ companyName }: { companyName: string }) {
         >
           Tekliflerim
         </Link>
+        <Link
+          href="/portal/support"
+          className="rounded-[8px] px-3 py-1.5 text-[12.5px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
+        >
+          Destek
+        </Link>
         <button
           onClick={handleSignOut}
           title="Çıkış yap"
