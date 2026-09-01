@@ -95,3 +95,33 @@ export async function inviteUser(
   revalidatePath("/users");
   return { ok: true };
 }
+
+// Rol/İzin matrisi — hangi rolün hangi modülü görebildiğini/düzenleyebildiğini
+// belirler (role_permissions tablosu). SADECE founder değiştirebilir — RLS
+// zaten "role_permissions_founder_manage" ile bunu zorunlu kılıyor, burada
+// count kontrolü founder olmayan bir çağrıyı sessizce reddeder.
+export async function updateRolePermission(
+  role: UserRole,
+  moduleKey: string,
+  canView: boolean,
+  canEdit: boolean
+): Promise<ActionResult> {
+  const supabase = createClient();
+
+  const { error, count } = await supabase
+    .from("role_permissions")
+    .upsert(
+      { role, module_key: moduleKey, can_view: canView, can_edit: canEdit },
+      { onConflict: "role,module_key", count: "exact" }
+    );
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu izni değiştirme yetkin yok — sadece Süper Admin değiştirebilir." };
+  }
+
+  revalidatePath("/users");
+  return { ok: true };
+}

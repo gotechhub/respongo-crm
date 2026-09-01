@@ -196,6 +196,7 @@ export async function submitProposal(id: string): Promise<ActionResult> {
   const patch: Record<string, unknown> = {
     status: targetStatus,
     approval_note: null,
+    customer_note: null,
   };
   if (targetStatus === "sent") {
     patch.sent_at = new Date().toISOString();
@@ -315,6 +316,77 @@ export async function updateProposalStatus(
 
   revalidatePath("/sales/proposals");
   revalidatePath(`/sales/proposals/${id}`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Müşteri Portalı — "sent" durumundaki teklife müşterinin KENDİSİNİN verdiği
+// gerçek karar. RLS (proposals_customer_respond) zaten sadece customer_users
+// ile bağlı olduğu ve "sent" durumundaki teklife izin veriyor; buradaki
+// .eq("status","sent") hem RLS ile tutarlı hem de dostane hata mesajı için.
+// ---------------------------------------------------------------------------
+
+export async function customerAcceptProposal(id: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("proposals")
+    .update({ status: "accepted" }, { count: "exact" })
+    .eq("id", id)
+    .eq("status", "sent");
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu teklif şu anda karar verilebilir durumda değil." };
+  }
+
+  revalidatePath("/portal");
+  revalidatePath(`/portal/proposals/${id}`);
+  return { ok: true };
+}
+
+export async function customerRejectProposal(id: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("proposals")
+    .update({ status: "rejected" }, { count: "exact" })
+    .eq("id", id)
+    .eq("status", "sent");
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu teklif şu anda karar verilebilir durumda değil." };
+  }
+
+  revalidatePath("/portal");
+  revalidatePath(`/portal/proposals/${id}`);
+  return { ok: true };
+}
+
+export async function customerRequestProposalRevision(id: string, note: string): Promise<ActionResult> {
+  if (!note.trim()) {
+    return { ok: false, error: "Revizyon talebinle ilgili birkaç kelime yazman gerekiyor." };
+  }
+
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("proposals")
+    .update({ status: "revision_requested", customer_note: note.trim() }, { count: "exact" })
+    .eq("id", id)
+    .eq("status", "sent");
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu teklif şu anda karar verilebilir durumda değil." };
+  }
+
+  revalidatePath("/portal");
+  revalidatePath(`/portal/proposals/${id}`);
   return { ok: true };
 }
 

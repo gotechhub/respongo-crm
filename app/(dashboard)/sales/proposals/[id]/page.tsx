@@ -148,6 +148,7 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
           proposalId={proposal.id}
           status={status}
           approvalNote={proposal.approval_note as string | null}
+          customerNote={proposal.customer_note as string | null}
           isFounder={isFounder}
         />
       </div>

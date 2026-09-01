@@ -56,6 +56,12 @@ export default async function DashboardLayout({
     );
   }
 
+  // "customer" rolü bu iç CRM arayüzünü hiç görmemeli — kendi portalına
+  // yönlendirilir (bkz. app/(portal)).
+  if (typedProfile.role === "customer") {
+    redirect("/portal");
+  }
+
   if (typedProfile.is_active === false) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-rg-bg px-6">

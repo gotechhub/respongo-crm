@@ -16,11 +16,13 @@ export function ProposalApprovalPanel({
   proposalId,
   status,
   approvalNote,
+  customerNote,
   isFounder,
 }: {
   proposalId: string;
   status: ProposalStatus;
   approvalNote: string | null;
+  customerNote: string | null;
   isFounder: boolean;
 }) {
   const router = useRouter();
@@ -124,6 +126,20 @@ export function ProposalApprovalPanel({
         <div>
           <div className="font-bold">Kurucu revizyon istedi:</div>
           <div className="mt-0.5 text-rg-ink-soft">{approvalNote}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Müşteri portalından gelen revizyon talebi — kurucunun iç notundan
+  // (approvalNote) ayrı, farklı renkle gösteriliyor ki kaynağı net olsun.
+  if (status === "revision_requested" && customerNote) {
+    return (
+      <div className="flex items-start gap-2 rounded-2xl bg-golxp-tint px-5 py-3.5 text-[12.5px] text-golxp">
+        <MessageSquareWarning className="mt-0.5 h-4 w-4 shrink-0" />
+        <div>
+          <div className="font-bold">Müşteri revizyon istedi:</div>
+          <div className="mt-0.5 text-rg-ink-soft">{customerNote}</div>
         </div>
       </div>
     );

@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { REGION_LABELS_TR, type Region } from "@/lib/roles";
 import { ContactsPanel, type ContactRow } from "../../../contacts/contacts-panel";
 import { CustomerDetailPanel } from "./customer-detail-panel";
+import { PortalAccessPanel, type PortalUserRow } from "./portal-access-panel";
 import type { CustomerInput } from "../actions";
+import type { UserRole } from "@/lib/roles";
 
 const PROPOSAL_STATUS_LABEL: Record<string, string> = {
   draft: "Taslak",
@@ -55,8 +57,18 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
     notFound();
   }
 
-  const [{ data: lead }, { data: company }, { data: contacts }, { data: proposals }, { data: projects }] =
-    await Promise.all([
+  const { data: callerProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const callerRole = (callerProfile as { role: UserRole | null } | null)?.role ?? null;
+  const canManagePortal = callerRole === "founder" || customer.owner_id === user.id;
+
+  const [
+    { data: lead },
+    { data: company },
+    { data: contacts },
+    { data: proposals },
+    { data: projects },
+    { data: portalLinks },
+  ] = await Promise.all([
       customer.lead_id
         ? supabase.from("leads").select("id, company_name, status").eq("id", customer.lead_id).single()
         : Promise.resolve({ data: null }),
@@ -83,6 +95,9 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
         .select("id, name, status, start_date, end_date, created_at")
         .eq("customer_id", params.id)
         .order("created_at", { ascending: false }),
+      canManagePortal
+        ? supabase.from("customer_users").select("profile_id").eq("customer_id", params.id)
+        : Promise.resolve({ data: [] as { profile_id: string }[] }),
     ]);
 
   const contactRows = (contacts ?? []) as ContactRow[];
@@ -94,6 +109,20 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
     (owners ?? []).forEach((o) => {
       ownerNames[o.id] = (o.full_name as string | null) || (o.email as string);
     });
+  }
+
+  const portalProfileIds = (portalLinks ?? []).map((l) => l.profile_id);
+  let portalUsers: PortalUserRow[] = [];
+  if (portalProfileIds.length > 0) {
+    const { data: portalProfiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", portalProfileIds);
+    portalUsers = (portalProfiles ?? []).map((p) => ({
+      profileId: p.id as string,
+      fullName: p.full_name as string | null,
+      email: p.email as string,
+    }));
   }
 
   const initial: CustomerInput = {
@@ -197,6 +226,12 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
             fixedCompanyId={company.id}
             defaultRegion={(customer.region as Region) ?? null}
           />
+        </div>
+      )}
+
+      {canManagePortal && (
+        <div className="mt-5">
+          <PortalAccessPanel customerId={customer.id} initialUsers={portalUsers} />
         </div>
       )}
     </>
