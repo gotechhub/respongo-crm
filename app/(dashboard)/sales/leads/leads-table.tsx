@@ -5,6 +5,11 @@ import { Check, Loader2 } from "lucide-react";
 import { REGION_LABELS_TR, type Region } from "@/lib/roles";
 import { Pagination } from "@/components/ui/pagination";
 import { convertLeadToCustomer, updateLeadStatus, type LeadStatus } from "./actions";
+import {
+  LEAD_STATUS_LABEL as STATUS_LABEL,
+  LEAD_STATUS_CLASS as STATUS_CLASS,
+  EDITABLE_LEAD_STATUSES as EDITABLE_STATUSES,
+} from "./status-labels";
 
 export type LeadRow = {
   id: string;
@@ -18,24 +23,6 @@ export type LeadRow = {
   owner_id: string | null;
   created_at: string;
 };
-
-const STATUS_LABEL: Record<LeadStatus, string> = {
-  yeni: "Yeni",
-  gorusme: "Görüşme",
-  teklif: "Teklif",
-  musteri: "Müşteri",
-  kaybedildi: "Kaybedildi",
-};
-
-const STATUS_CLASS: Record<LeadStatus, string> = {
-  yeni: "bg-golms-tint text-golms",
-  gorusme: "bg-gocatalog-tint text-gocatalog",
-  teklif: "bg-golxp-tint text-golxp",
-  musteri: "bg-gofactory-tint text-gofactory",
-  kaybedildi: "bg-rg-surface-alt text-rg-ink-faint",
-};
-
-const EDITABLE_STATUSES: LeadStatus[] = ["yeni", "gorusme", "teklif", "kaybedildi"];
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "numeric" });
@@ -77,7 +64,9 @@ function LeadRowItem({ row, ownerName }: { row: LeadRow; ownerName: string }) {
   return (
     <tr className="border-t border-rg-line">
       <td className="px-4 py-3">
-        <div className="text-[12.8px] font-semibold text-rg-ink">{row.company_name}</div>
+        <a href={`/sales/leads/${row.id}`} className="text-[12.8px] font-semibold text-rg-ink hover:text-primary">
+          {row.company_name}
+        </a>
         <div className="text-[11.5px] text-rg-ink-faint">
           {row.contact_name || "—"}
           {row.contact_email ? ` · ${row.contact_email}` : ""}
