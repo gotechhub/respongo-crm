@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { REGION_LABELS_TR, type Region, type UserRole } from "@/lib/roles";
@@ -132,13 +132,24 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
 
   return (
     <>
-      <Link
-        href="/sales/proposals"
-        className="mb-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-rg-ink-soft hover:text-primary"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Tekliflere dön
-      </Link>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <Link
+          href="/sales/proposals"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-rg-ink-soft hover:text-primary"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Tekliflere dön
+        </Link>
+        <a
+          href={`/api/proposals/${proposal.id}/pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-[8px] border border-rg-line bg-rg-surface px-3 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:border-primary hover:text-primary"
+        >
+          <Download className="h-3.5 w-3.5" />
+          PDF İndir
+        </a>
+      </div>
       <Topbar title={proposal.title} subtitle={targetRow?.company_name ?? "Teklif detayı"} />
 
       <ProposalStatusPanel proposalId={proposal.id} initialStatus={status} />
