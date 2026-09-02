@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { PartnerTasksWidget, type PartnerTaskRow } from "./tasks-widget";
+import { CommissionWidget, type MyCommissionRow } from "./commission-widget";
 import type { PartnerProfileRow } from "./onboarding-wizard";
 
 export type PartnerStats = {
@@ -33,11 +34,13 @@ export function PartnerPanel({
   stats,
   tasks,
   resourceCount,
+  commissionEntries,
 }: {
   partnerProfile: PartnerProfileRow;
   stats: PartnerStats;
   tasks: PartnerTaskRow[];
   resourceCount: number;
+  commissionEntries: MyCommissionRow[];
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -129,6 +132,8 @@ export function PartnerPanel({
           <div className="mt-3 text-[11.5px] font-semibold text-primary">{resourceCount} kaynak →</div>
         </Link>
       </div>
+
+      <CommissionWidget entries={commissionEntries} />
     </div>
   );
 }

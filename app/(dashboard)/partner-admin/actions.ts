@@ -43,3 +43,36 @@ export async function updatePartnerAdmin(
   revalidatePath("/partner-admin");
   return { ok: true };
 }
+
+// Komisyon satırını ödendi/bekliyor olarak işaretle — SADECE founder.
+// Satır otomatik olarak trg_calculate_partner_commission trigger'ıyla
+// oluşuyor/güncelleniyor (proposal 'accepted' olduğunda); bu action sadece
+// ödeme durumunu ve iç notu değiştiriyor, tutarı/oranı DEĞİŞTİRMİYOR.
+export async function updateCommissionEntry(
+  entryId: string,
+  input: { status: "unpaid" | "paid"; adminNote: string }
+): Promise<ActionResult> {
+  const supabase = createClient();
+
+  const { error, count } = await supabase
+    .from("commission_entries")
+    .update(
+      {
+        status: input.status,
+        paid_at: input.status === "paid" ? new Date().toISOString() : null,
+        admin_note: input.adminNote || null,
+      },
+      { count: "exact" }
+    )
+    .eq("id", entryId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu komisyon kaydını güncelleme yetkin yok — sadece Süper Admin değiştirebilir." };
+  }
+
+  revalidatePath("/partner-admin");
+  return { ok: true };
+}

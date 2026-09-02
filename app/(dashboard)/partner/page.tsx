@@ -6,6 +6,7 @@ import { ensurePartnerProfile } from "./actions";
 import { PartnerOnboardingWizard, type PartnerProfileRow } from "./onboarding-wizard";
 import { PartnerPanel } from "./partner-panel";
 import type { PartnerTaskRow } from "./tasks-widget";
+import type { MyCommissionRow } from "./commission-widget";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -67,7 +68,7 @@ export default async function PartnerHomePage() {
     );
   }
 
-  const [poolRes, leadsRes, customersRes, proposalsRes, tasksRes, resourcesCountRes] = await Promise.all([
+  const [poolRes, leadsRes, customersRes, proposalsRes, tasksRes, resourcesCountRes, commissionRes] = await Promise.all([
     supabase.from("customer_pool").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
     supabase.from("leads").select("status, value_estimate, currency").eq("owner_id", user.id),
     supabase.from("customers").select("id", { count: "exact", head: true }).eq("owner_id", user.id).eq("is_active", true),
@@ -78,6 +79,11 @@ export default async function PartnerHomePage() {
       .eq("partner_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("resources").select("id", { count: "exact", head: true }),
+    supabase
+      .from("commission_entries")
+      .select("id, amount, currency, commission_rate, status, created_at, proposals(title)")
+      .eq("partner_id", user.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const leads = (leadsRes.data ?? []) as LeadStub[];
@@ -121,6 +127,23 @@ export default async function PartnerHomePage() {
         }}
         tasks={(tasksRes.data ?? []) as PartnerTaskRow[]}
         resourceCount={resourcesCountRes.count ?? 0}
+        commissionEntries={((commissionRes.data ?? []) as unknown as {
+          id: string;
+          amount: number;
+          currency: string;
+          commission_rate: number;
+          status: "unpaid" | "paid";
+          created_at: string;
+          proposals: { title: string } | null;
+        }[]).map((c) => ({
+          id: c.id,
+          proposalTitle: c.proposals?.title ?? "(silinmiş teklif)",
+          amount: c.amount,
+          currency: c.currency,
+          commissionRate: c.commission_rate,
+          status: c.status,
+          createdAt: c.created_at,
+        })) as MyCommissionRow[]}
       />
     </>
   );

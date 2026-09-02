@@ -3,6 +3,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import type { Region, UserRole } from "@/lib/roles";
 import { PartnerAdminTable, type PartnerAdminRow } from "./partner-admin-table";
+import { CommissionPanel, type CommissionEntryRow } from "./commission-panel";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -92,6 +93,41 @@ export default async function PartnerAdminPage() {
   const activatableRows = rows.filter((r) => r.partnerProfileId);
   const pendingSetupRows = rows.filter((r) => !r.partnerProfileId);
 
+  const { data: commissionRows } = await supabase
+    .from("commission_entries")
+    .select(
+      "id, partner_id, proposal_id, commission_rate, amount, currency, status, paid_at, admin_note, created_at, proposals(title)"
+    )
+    .order("created_at", { ascending: false });
+
+  const nameByAccountId = new Map(accounts.map((a) => [a.id, a.full_name || a.email]));
+  const commissionEntries: CommissionEntryRow[] = ((commissionRows ?? []) as unknown as {
+    id: string;
+    partner_id: string;
+    proposal_id: string;
+    commission_rate: number;
+    amount: number;
+    currency: string;
+    status: "unpaid" | "paid";
+    paid_at: string | null;
+    admin_note: string | null;
+    created_at: string;
+    proposals: { title: string } | null;
+  }[]).map((c) => ({
+    id: c.id,
+    partnerId: c.partner_id,
+    partnerName: nameByAccountId.get(c.partner_id) ?? "(bilinmeyen ortak)",
+    proposalId: c.proposal_id,
+    proposalTitle: c.proposals?.title ?? "(silinmiş teklif)",
+    commissionRate: c.commission_rate,
+    amount: c.amount,
+    currency: c.currency,
+    status: c.status,
+    paidAt: c.paid_at,
+    adminNote: c.admin_note,
+    createdAt: c.created_at,
+  }));
+
   return (
     <>
       <Topbar
@@ -105,6 +141,17 @@ export default async function PartnerAdminPage() {
           sürecini başlatmadı — giriş yaptıklarında burada aktif hale gelecek.
         </p>
       )}
+
+      <div className="mt-10">
+        <div className="mb-4">
+          <h2 className="text-[15px] font-bold text-rg-ink">Komisyon Takibi</h2>
+          <p className="mt-1 text-[12px] text-rg-ink-faint">
+            Bir teklif kabul edildiğinde, sahibi aktif bir iş ortağıysa komisyon tutarı otomatik hesaplanır.
+            Ödeme yapıldığında durumu buradan &quot;Ödendi&quot; olarak işaretle.
+          </p>
+        </div>
+        <CommissionPanel entries={commissionEntries} />
+      </div>
     </>
   );
 }
