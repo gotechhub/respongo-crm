@@ -18,6 +18,7 @@ import {
   LifeBuoy,
   Inbox,
   UserCog,
+  Handshake,
 } from "lucide-react";
 
 export type NavItem = {
@@ -83,7 +84,14 @@ export const navGroups: NavGroup[] = [
         icon: Wallet,
         phase: "beta",
       },
-      { label: "Kaynaklar", href: "/sales/resources", icon: BookOpen, phase: "v1" },
+      { label: "Kaynaklar", href: "/sales/resources", icon: BookOpen, phase: "beta" },
+    ],
+  },
+  {
+    label: "İş Ortakları Portalı",
+    items: [
+      { label: "İş Ortağı Panelim", href: "/partner", icon: Handshake, phase: "beta" },
+      { label: "İş Ortakları", href: "/partner-admin", icon: UserCog, phase: "beta" },
     ],
   },
   {
