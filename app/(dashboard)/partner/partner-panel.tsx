@@ -3,6 +3,8 @@ import { BookOpen } from "lucide-react";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { PartnerTasksWidget, type PartnerTaskRow } from "./tasks-widget";
 import { CommissionWidget, type MyCommissionRow } from "./commission-widget";
+import { PartnerMeetingsWidget, type PartnerMeetingRow } from "./meetings-widget";
+import { TargetWidget, type PartnerTargetData } from "./target-widget";
 import type { PartnerProfileRow } from "./onboarding-wizard";
 
 export type PartnerStats = {
@@ -35,12 +37,16 @@ export function PartnerPanel({
   tasks,
   resourceCount,
   commissionEntries,
+  meetings,
+  target,
 }: {
   partnerProfile: PartnerProfileRow;
   stats: PartnerStats;
   tasks: PartnerTaskRow[];
   resourceCount: number;
   commissionEntries: MyCommissionRow[];
+  meetings: PartnerMeetingRow[];
+  target: PartnerTargetData;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -131,6 +137,13 @@ export function PartnerPanel({
           </div>
           <div className="mt-3 text-[11.5px] font-semibold text-primary">{resourceCount} kaynak →</div>
         </Link>
+      </div>
+
+      <div className="grid grid-cols-3 gap-5">
+        <div className="col-span-2">
+          <PartnerMeetingsWidget meetings={meetings} />
+        </div>
+        <TargetWidget data={target} />
       </div>
 
       <CommissionWidget entries={commissionEntries} />

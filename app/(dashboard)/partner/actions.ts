@@ -194,3 +194,74 @@ export async function deletePartnerTask(taskId: string): Promise<ActionResult> {
   revalidatePath("/partner");
   return { ok: true };
 }
+
+// --- Toplantılarım (partner_meetings) ---
+
+export type PartnerMeetingInput = {
+  title: string;
+  meetingDate: string; // "YYYY-MM-DD" veya "YYYY-MM-DDTHH:mm"
+  notes: string;
+};
+
+export async function createPartnerMeeting(input: PartnerMeetingInput): Promise<ActionResult> {
+  if (!input.title.trim()) {
+    return { ok: false, error: "Toplantı başlığı zorunlu." };
+  }
+  if (!input.meetingDate) {
+    return { ok: false, error: "Toplantı tarihi zorunlu." };
+  }
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Oturum bulunamadı." };
+  }
+
+  const { error } = await supabase.from("partner_meetings").insert({
+    partner_id: user.id,
+    title: input.title,
+    meeting_date: new Date(input.meetingDate).toISOString(),
+    notes: input.notes || null,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  revalidatePath("/partner");
+  return { ok: true };
+}
+
+export async function updatePartnerMeetingStatus(
+  meetingId: string,
+  status: "scheduled" | "completed" | "cancelled" | "no_show"
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("partner_meetings")
+    .update({ status }, { count: "exact" })
+    .eq("id", meetingId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu toplantıyı güncelleme yetkin yok." };
+  }
+  revalidatePath("/partner");
+  return { ok: true };
+}
+
+export async function deletePartnerMeeting(meetingId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase.from("partner_meetings").delete({ count: "exact" }).eq("id", meetingId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu toplantıyı silme yetkin yok." };
+  }
+  revalidatePath("/partner");
+  return { ok: true };
+}

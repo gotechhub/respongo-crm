@@ -1,2 +1,14 @@
  
 ==== €ar 02.09.2026 15:56:17,63 ==== 
+warning: in the working copy of 'oto-push-kur.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'oto-push.bat', LF will be replaced by CRLF the next time Git touches it
+[main 5eb5bc6] Otomatik kayit - Ã‡ar 02.09.2026 15:56:18,13
+ 3 files changed, 60 insertions(+)
+ create mode 100644 oto-push-kur.bat
+ create mode 100644 oto-push-log.txt
+ create mode 100644 oto-push.bat
+To https://github.com/gotechhub/respongo-crm.git
+   4502d26..5eb5bc6  main -> main
+Tamamlandi. 
+ 
+==== €ar 02.09.2026 15:59:01,63 ==== 

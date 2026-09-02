@@ -7,6 +7,8 @@ import { PartnerOnboardingWizard, type PartnerProfileRow } from "./onboarding-wi
 import { PartnerPanel } from "./partner-panel";
 import type { PartnerTaskRow } from "./tasks-widget";
 import type { MyCommissionRow } from "./commission-widget";
+import type { PartnerMeetingRow } from "./meetings-widget";
+import type { PartnerTargetData } from "./target-widget";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -68,7 +70,23 @@ export default async function PartnerHomePage() {
     );
   }
 
-  const [poolRes, leadsRes, customersRes, proposalsRes, tasksRes, resourcesCountRes, commissionRes] = await Promise.all([
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const monthStartIso = new Date(currentYear, currentMonth - 1, 1).toISOString();
+  const monthEndIso = new Date(currentYear, currentMonth, 1).toISOString();
+
+  const [
+    poolRes,
+    leadsRes,
+    customersRes,
+    proposalsRes,
+    tasksRes,
+    resourcesCountRes,
+    commissionRes,
+    meetingsRes,
+    targetRes,
+  ] = await Promise.all([
     supabase.from("customer_pool").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
     supabase.from("leads").select("status, value_estimate, currency").eq("owner_id", user.id),
     supabase.from("customers").select("id", { count: "exact", head: true }).eq("owner_id", user.id).eq("is_active", true),
@@ -84,6 +102,18 @@ export default async function PartnerHomePage() {
       .select("id, amount, currency, commission_rate, status, created_at, proposals(title)")
       .eq("partner_id", user.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("partner_meetings")
+      .select("id, title, notes, meeting_date, status")
+      .eq("partner_id", user.id)
+      .order("meeting_date", { ascending: false }),
+    supabase
+      .from("partner_monthly_targets")
+      .select("target_revenue, target_meetings, currency")
+      .eq("partner_id", user.id)
+      .eq("year", currentYear)
+      .eq("month", currentMonth)
+      .maybeSingle(),
   ]);
 
   const leads = (leadsRes.data ?? []) as LeadStub[];
@@ -113,6 +143,48 @@ export default async function PartnerHomePage() {
         .join(" · ")
     : "—";
 
+  const commissionEntries = ((commissionRes.data ?? []) as unknown as {
+    id: string;
+    amount: number;
+    currency: string;
+    commission_rate: number;
+    status: "unpaid" | "paid";
+    created_at: string;
+    proposals: { title: string } | null;
+  }[]).map((c) => ({
+    id: c.id,
+    proposalTitle: c.proposals?.title ?? "(silinmiş teklif)",
+    amount: c.amount,
+    currency: c.currency,
+    commissionRate: c.commission_rate,
+    status: c.status,
+    createdAt: c.created_at,
+  })) as MyCommissionRow[];
+
+  const meetings = (meetingsRes.data ?? []) as PartnerMeetingRow[];
+
+  const targetRow = targetRes.data as { target_revenue: number | null; target_meetings: number | null; currency: string } | null;
+  const targetCurrency = targetRow?.currency ?? "USD";
+
+  const actualRevenue = ((commissionRes.data ?? []) as { amount: number; currency: string; created_at: string }[])
+    .filter((c) => c.currency === targetCurrency && c.created_at >= monthStartIso && c.created_at < monthEndIso)
+    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+  const actualMeetings = meetings.filter(
+    (m) => m.status === "completed" && m.meeting_date >= monthStartIso && m.meeting_date < monthEndIso
+  ).length;
+
+  const monthLabel = now.toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
+
+  const target: PartnerTargetData = {
+    targetRevenue: targetRow?.target_revenue ?? null,
+    targetMeetings: targetRow?.target_meetings ?? null,
+    currency: targetCurrency,
+    actualRevenue,
+    actualMeetings,
+    monthLabel,
+  };
+
   return (
     <>
       <Topbar title="İş Ortağı Panelim" subtitle="Kendi lead/müşteri/teklif durumun ve görevlerin" />
@@ -127,23 +199,9 @@ export default async function PartnerHomePage() {
         }}
         tasks={(tasksRes.data ?? []) as PartnerTaskRow[]}
         resourceCount={resourcesCountRes.count ?? 0}
-        commissionEntries={((commissionRes.data ?? []) as unknown as {
-          id: string;
-          amount: number;
-          currency: string;
-          commission_rate: number;
-          status: "unpaid" | "paid";
-          created_at: string;
-          proposals: { title: string } | null;
-        }[]).map((c) => ({
-          id: c.id,
-          proposalTitle: c.proposals?.title ?? "(silinmiş teklif)",
-          amount: c.amount,
-          currency: c.currency,
-          commissionRate: c.commission_rate,
-          status: c.status,
-          createdAt: c.created_at,
-        })) as MyCommissionRow[]}
+        commissionEntries={commissionEntries}
+        meetings={meetings}
+        target={target}
       />
     </>
   );

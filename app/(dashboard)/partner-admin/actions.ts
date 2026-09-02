@@ -76,3 +76,52 @@ export async function updateCommissionEntry(
   revalidatePath("/partner-admin");
   return { ok: true };
 }
+
+// --- Toplantı Takibi + Aylık Hedefler (partner_monthly_targets) ---
+
+export type MonthlyTargetInput = {
+  targetRevenue: number | null;
+  targetMeetings: number | null;
+  currency: string;
+  adminNote: string;
+};
+
+// Bir iş ortağının belirli bir ay/yıl için hedefini oluşturur/günceller. RLS
+// (partner_monthly_targets_founder_all + ..._region_admin_manage) zaten
+// yalnızca founder/region_admin'in bunu yapmasına izin veriyor; benzersizlik
+// partner_id+year+month unique constraint'iyle korunuyor, bu yüzden upsert
+// kullanılıyor.
+export async function upsertPartnerMonthlyTarget(
+  partnerId: string,
+  year: number,
+  month: number,
+  input: MonthlyTargetInput
+): Promise<ActionResult> {
+  if (input.targetRevenue !== null && (Number.isNaN(input.targetRevenue) || input.targetRevenue < 0)) {
+    return { ok: false, error: "Ciro hedefi geçerli bir sayı olmalı." };
+  }
+  if (input.targetMeetings !== null && (Number.isNaN(input.targetMeetings) || input.targetMeetings < 0)) {
+    return { ok: false, error: "Toplantı hedefi geçerli bir sayı olmalı." };
+  }
+
+  const supabase = createClient();
+  const { error } = await supabase.from("partner_monthly_targets").upsert(
+    {
+      partner_id: partnerId,
+      year,
+      month,
+      target_revenue: input.targetRevenue,
+      target_meetings: input.targetMeetings,
+      currency: input.currency,
+      admin_note: input.adminNote || null,
+    },
+    { onConflict: "partner_id,year,month" }
+  );
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/partner-admin");
+  return { ok: true };
+}

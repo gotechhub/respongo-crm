@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Region, UserRole } from "@/lib/roles";
 import { PartnerAdminTable, type PartnerAdminRow } from "./partner-admin-table";
 import { CommissionPanel, type CommissionEntryRow } from "./commission-panel";
+import { MeetingsTargetsPanel, type MeetingsTargetRow } from "./meetings-targets-panel";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -100,6 +101,41 @@ export default async function PartnerAdminPage() {
     )
     .order("created_at", { ascending: false });
 
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const monthStartIso = new Date(currentYear, currentMonth - 1, 1).toISOString();
+  const monthEndIso = new Date(currentYear, currentMonth, 1).toISOString();
+  const monthLabel = now.toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
+
+  let meetingsThisMonth: { partner_id: string; status: string; meeting_date: string }[] = [];
+  let targetRows: {
+    partner_id: string;
+    target_revenue: number | null;
+    target_meetings: number | null;
+    currency: string;
+    admin_note: string | null;
+  }[] = [];
+  if (accountIds.length > 0) {
+    const [meetingsRes, targetsRes] = await Promise.all([
+      supabase
+        .from("partner_meetings")
+        .select("partner_id, status, meeting_date")
+        .in("partner_id", accountIds)
+        .gte("meeting_date", monthStartIso)
+        .lt("meeting_date", monthEndIso),
+      supabase
+        .from("partner_monthly_targets")
+        .select("partner_id, target_revenue, target_meetings, currency, admin_note")
+        .in("partner_id", accountIds)
+        .eq("year", currentYear)
+        .eq("month", currentMonth),
+    ]);
+    meetingsThisMonth = (meetingsRes.data ?? []) as typeof meetingsThisMonth;
+    targetRows = (targetsRes.data ?? []) as typeof targetRows;
+  }
+  const targetByPartnerId = new Map(targetRows.map((t) => [t.partner_id, t]));
+
   const nameByAccountId = new Map(accounts.map((a) => [a.id, a.full_name || a.email]));
   const commissionEntries: CommissionEntryRow[] = ((commissionRows ?? []) as unknown as {
     id: string;
@@ -128,6 +164,34 @@ export default async function PartnerAdminPage() {
     createdAt: c.created_at,
   }));
 
+  const meetingsTargetsRows: MeetingsTargetRow[] = accounts.map((a) => {
+    const target = targetByPartnerId.get(a.id);
+    const currency = target?.currency ?? "USD";
+    const partnerMeetings = meetingsThisMonth.filter((m) => m.partner_id === a.id);
+    const actualMeetings = partnerMeetings.filter((m) => m.status === "completed").length;
+    const actualRevenue = commissionEntries
+      .filter(
+        (c) =>
+          c.partnerId === a.id &&
+          c.currency === currency &&
+          c.createdAt >= monthStartIso &&
+          c.createdAt < monthEndIso
+      )
+      .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+    return {
+      partnerId: a.id,
+      partnerName: a.full_name || a.email,
+      targetRevenue: target?.target_revenue ?? null,
+      targetMeetings: target?.target_meetings ?? null,
+      currency,
+      adminNote: target?.admin_note ?? null,
+      actualRevenue,
+      actualMeetings,
+      scheduledMeetings: partnerMeetings.filter((m) => m.status === "scheduled").length,
+    };
+  });
+
   return (
     <>
       <Topbar
@@ -151,6 +215,17 @@ export default async function PartnerAdminPage() {
           </p>
         </div>
         <CommissionPanel entries={commissionEntries} />
+      </div>
+
+      <div className="mt-10">
+        <div className="mb-4">
+          <h2 className="text-[15px] font-bold text-rg-ink">Toplantı Takibi &amp; Aylık Hedefler</h2>
+          <p className="mt-1 text-[12px] text-rg-ink-faint">
+            Her iş ortağı için bu ayın toplantı ve ciro hedefini belirle — gerçekleşen değerler iş ortağının
+            kendi kaydettiği toplantılar ve otomatik hesaplanan komisyon kayıtlarından anlık hesaplanır.
+          </p>
+        </div>
+        <MeetingsTargetsPanel rows={meetingsTargetsRows} year={currentYear} month={currentMonth} monthLabel={monthLabel} />
       </div>
     </>
   );
