@@ -31,3 +31,11 @@ To https://github.com/gotechhub/respongo-crm.git
 Tamamlandi. 
  
 ==== €ar 02.09.2026 16:02:00,61 ==== 
+warning: in the working copy of 'oto-push-log.txt', LF will be replaced by CRLF the next time Git touches it
+[main e0d41f0] Otomatik kayit - Ã‡ar 02.09.2026 16:02:00,80
+ 1 file changed, 19 insertions(+)
+To https://github.com/gotechhub/respongo-crm.git
+   975e55d..e0d41f0  main -> main
+Tamamlandi. 
+ 
+==== €ar 02.09.2026 16:05:00,61 ==== 
