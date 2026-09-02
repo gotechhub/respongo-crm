@@ -1,8 +1,11 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Giriş gerektirmeyen tek sayfa: /login ve magic link geri dönüş rotası /auth/callback.
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+// Giriş gerektirmeyen sayfalar: /login, magic link geri dönüş rotası /auth/callback,
+// ve dış sistemlerin (respongo.com web sitesi vb.) paylaşılan bir sırla çağırdığı
+// webhook uç noktaları (/api/webhooks/*) — bunlar Supabase oturumu TAŞIMAZ, kimlik
+// doğrulamayı kendi içlerinde (X-Webhook-Secret) yapar.
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/api/webhooks"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({

@@ -69,6 +69,59 @@ export async function toggleCustomerActive(id: string, isActive: boolean): Promi
 }
 
 // ---------------------------------------------------------------------------
+// Bülten (Brevo) aboneliği — müşteri detay panelindeki toggle bunu çağırır.
+// marketing_settings.auto_sync_newsletter açıksa Brevo'ya da senkronize edilir;
+// kapalıysa (veya Brevo bağlantısı henüz kurulmadıysa) sadece CRM içindeki
+// alan güncellenir — DB güncellemesi Brevo senkronizasyonunun başarısına bağlı
+// DEĞİLDİR (Brevo geçici olarak erişilemez olsa bile kullanıcı tercihini
+// CRM'e kaydedebilmeli, sonradan tekrar denenebilir).
+// ---------------------------------------------------------------------------
+
+export async function toggleCustomerNewsletter(id: string, subscribed: boolean): Promise<ActionResult> {
+  const supabase = createClient();
+  const { data: customer, error: fetchError } = await supabase
+    .from("customers")
+    .select("primary_contact_email, primary_contact_name, region")
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !customer) {
+    return { ok: false, error: "Müşteri bulunamadı ya da görüntüleme yetkin yok." };
+  }
+  if (subscribed && !customer.primary_contact_email) {
+    return { ok: false, error: "Bültene kaydetmek için önce müşterinin e-posta adresi girilmeli." };
+  }
+
+  const { error, count } = await supabase
+    .from("customers")
+    .update({ newsletter_subscribed: subscribed, newsletter_synced_at: new Date().toISOString() }, { count: "exact" })
+    .eq("id", id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu müşteriyi güncelleme yetkin yok." };
+  }
+
+  if (customer.primary_contact_email) {
+    const { isNewsletterAutoSyncEnabled, syncNewsletterSubscription } = await import("@/lib/brevo/client");
+    if (await isNewsletterAutoSyncEnabled()) {
+      await syncNewsletterSubscription({
+        email: customer.primary_contact_email,
+        name: customer.primary_contact_name,
+        region: (customer.region as Region | null) ?? null,
+        subscribe: subscribed,
+      }).catch(() => null); // Brevo hatası CRM güncellemesini geri almaz, sessizce yutulur.
+    }
+  }
+
+  revalidatePath("/sales/customers");
+  revalidatePath(`/sales/customers/${id}`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Müşteri Portalı — erişim yönetimi. Bir müşteri şirketine "customer" rollü
 // bir portal kullanıcısı davet eder (customer_users köprü tablosuyla eşler).
 // RLS (customer_users_manage) sadece kurucu VEYA o müşterinin sahibi olan

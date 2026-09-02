@@ -145,7 +145,12 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
       </Link>
       <Topbar title={customer.company_name} subtitle="Müşteri detayı" />
 
-      <CustomerDetailPanel customerId={customer.id} initial={initial} isActive={customer.is_active} />
+      <CustomerDetailPanel
+        customerId={customer.id}
+        initial={initial}
+        isActive={customer.is_active}
+        isNewsletterSubscribed={Boolean(customer.newsletter_subscribed)}
+      />
 
       <div className="mt-5 grid grid-cols-3 gap-5">
         <div className="col-span-2 rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
@@ -159,6 +164,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
             <InfoField label="Sahibi" value={customer.owner_id ? ownerNames[customer.owner_id] : "Atanmamış"} />
             <InfoField label="Oluşturma Tarihi" value={fmtDate(customer.created_at)} />
             <InfoField label="Bağlı Şirket" value={company?.name ?? "Bağlı değil"} />
+            <InfoField label="Bülten Aboneliği" value={customer.newsletter_subscribed ? "Kayıtlı" : "Kayıtlı değil"} />
             <InfoField label="Kaynak Lead" value={lead?.company_name ?? "Doğrudan oluşturuldu"} />
           </div>
           {company && (

@@ -2,9 +2,9 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Pencil, Power, X } from "lucide-react";
+import { Loader2, Mail, Pencil, Power, X } from "lucide-react";
 import { REGION_LABELS_TR, type Region } from "@/lib/roles";
-import { updateCustomer, toggleCustomerActive, type CustomerInput } from "../actions";
+import { updateCustomer, toggleCustomerActive, toggleCustomerNewsletter, type CustomerInput } from "../actions";
 
 const inputClass =
   "rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary";
@@ -14,17 +14,21 @@ export function CustomerDetailPanel({
   customerId,
   initial,
   isActive,
+  isNewsletterSubscribed,
 }: {
   customerId: string;
   initial: CustomerInput;
   isActive: boolean;
+  isNewsletterSubscribed: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<CustomerInput>(initial);
   const [isPending, startTransition] = useTransition();
+  const [newsletterPending, startNewsletterTransition] = useTransition();
   const [error, setError] = useState("");
   const [active, setActive] = useState(isActive);
+  const [newsletter, setNewsletter] = useState(isNewsletterSubscribed);
 
   function set<K extends keyof CustomerInput>(key: K, value: CustomerInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -56,6 +60,18 @@ export function CustomerDetailPanel({
     });
   }
 
+  function handleToggleNewsletter() {
+    setError("");
+    startNewsletterTransition(async () => {
+      const result = await toggleCustomerNewsletter(customerId, !newsletter);
+      if (result.ok) {
+        setNewsletter((v) => !v);
+      } else {
+        setError(result.error);
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -71,6 +87,20 @@ export function CustomerDetailPanel({
         >
           <Power className="h-3.5 w-3.5" />
           {active ? "Aktif" : "Pasif"}
+        </button>
+        <button
+          onClick={handleToggleNewsletter}
+          disabled={newsletterPending}
+          title={newsletter ? "Bülten aboneliğini kaldır" : "Bültene abone et"}
+          className={
+            "inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-50 " +
+            (newsletter
+              ? "bg-golxp-tint text-golxp hover:brightness-95"
+              : "bg-rg-surface-alt text-rg-ink-faint hover:brightness-95")
+          }
+        >
+          <Mail className="h-3.5 w-3.5" />
+          {newsletter ? "Bültene Kayıtlı" : "Bültene Kayıtlı Değil"}
         </button>
         <button
           onClick={() => setEditing((v) => !v)}

@@ -104,7 +104,10 @@ export const navGroups: NavGroup[] = [
   },
   {
     label: "Pazarlama",
-    items: [{ label: "Kampanyalar", href: "/marketing", icon: Megaphone, phase: "beta" }],
+    items: [
+      { label: "Kampanyalar", href: "/marketing", icon: Megaphone, phase: "beta" },
+      { label: "Pazarlama Ayarları", href: "/marketing/settings", icon: Settings, phase: "beta" },
+    ],
   },
   {
     label: "Finans",
