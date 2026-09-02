@@ -12,3 +12,22 @@ To https://github.com/gotechhub/respongo-crm.git
 Tamamlandi. 
  
 ==== €ar 02.09.2026 15:59:01,63 ==== 
+warning: in the working copy of 'app/(dashboard)/partner-admin/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/partner-admin/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/partner/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/partner/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/partner/partner-panel.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'oto-push-log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/partner-admin/meetings-targets-panel.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/partner/meetings-widget.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/partner/target-widget.tsx', LF will be replaced by CRLF the next time Git touches it
+[main 975e55d] Otomatik kayit - Ã‡ar 02.09.2026 15:59:01,96
+ 9 files changed, 733 insertions(+), 18 deletions(-)
+ create mode 100644 app/(dashboard)/partner-admin/meetings-targets-panel.tsx
+ create mode 100644 app/(dashboard)/partner/meetings-widget.tsx
+ create mode 100644 app/(dashboard)/partner/target-widget.tsx
+To https://github.com/gotechhub/respongo-crm.git
+   5eb5bc6..975e55d  main -> main
+Tamamlandi. 
+ 
+==== €ar 02.09.2026 16:02:00,61 ==== 
