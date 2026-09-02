@@ -38,6 +38,11 @@ const styles = StyleSheet.create({
   colMethod: { width: "26%" },
   colRef: { width: "30%" },
   colAmount: { width: "22%", textAlign: "right" },
+  colItemDesc: { width: "40%" },
+  colItemQty: { width: "12%", textAlign: "right" },
+  colItemUnitPrice: { width: "18%", textAlign: "right" },
+  colItemVat: { width: "12%", textAlign: "right" },
+  colItemTotal: { width: "18%", textAlign: "right" },
   totalsRow: { flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 14 },
   totalBox: { border: "1pt solid #DFE3ED", borderRadius: 8, backgroundColor: "#EEF0F6", padding: "10 16", alignItems: "flex-end", minWidth: 130 },
   totalBoxAlt: { border: "1pt solid #F0D69B", borderRadius: 8, backgroundColor: "#FCF1DC", padding: "10 16", alignItems: "flex-end", minWidth: 130 },
@@ -55,10 +60,20 @@ export type InvoicePdfPayment = {
   reference_no: string | null;
 };
 
+export type InvoicePdfItem = {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number;
+  line_total: number;
+};
+
 export function InvoicePdfDocument({
   invoice,
   customerName,
   proposalTitle,
+  items,
   payments,
   paidTotal,
   remaining,
@@ -66,6 +81,7 @@ export function InvoicePdfDocument({
   invoice: {
     id: string;
     invoice_number: string | null;
+    parasut_invoice_no: string | null;
     amount: number;
     currency: string;
     status: string;
@@ -75,10 +91,14 @@ export function InvoicePdfDocument({
   };
   customerName: string | null;
   proposalTitle: string | null;
+  items: InvoicePdfItem[];
   payments: InvoicePdfPayment[];
   paidTotal: number;
   remaining: number;
 }) {
+  const kdvTotal = items.reduce((sum, it) => sum + (Number(it.line_total) || 0) * (Number(it.vat_rate) || 0) / 100, 0);
+  const itemsSubtotal = items.reduce((sum, it) => sum + (Number(it.line_total) || 0), 0);
+  const grandTotal = itemsSubtotal + kdvTotal;
   return (
     <Document title={`Respongo Fatura - ${invoice.invoice_number ?? invoice.id}`}>
       <Page size="A4" style={styles.page}>
@@ -89,7 +109,10 @@ export function InvoicePdfDocument({
           </View>
           <View>
             <Text style={styles.docTitle}>FATURA</Text>
-            <Text style={styles.docMeta}>{invoice.invoice_number ?? "—"}</Text>
+            <Text style={styles.docMeta}>{invoice.parasut_invoice_no ?? invoice.invoice_number ?? "—"}</Text>
+            {invoice.parasut_invoice_no && invoice.invoice_number && (
+              <Text style={styles.docMeta}>Dahili Referans: {invoice.invoice_number}</Text>
+            )}
             <Text style={styles.docMeta}>Fatura Tarihi: {fmtDate(invoice.issue_date)}</Text>
             <Text style={styles.docMeta}>Vade Tarihi: {fmtDate(invoice.due_date)}</Text>
           </View>
@@ -120,6 +143,32 @@ export function InvoicePdfDocument({
             </View>
           )}
         </View>
+
+        {items.length > 0 && (
+          <View style={[styles.table, { marginBottom: 16 }]}>
+            <View style={styles.tHeadRow}>
+              <Text style={[styles.tHeadCell, styles.colItemDesc]}>Açıklama</Text>
+              <Text style={[styles.tHeadCell, styles.colItemQty]}>Miktar</Text>
+              <Text style={[styles.tHeadCell, styles.colItemUnitPrice]}>Birim Fiyat</Text>
+              <Text style={[styles.tHeadCell, styles.colItemVat]}>KDV %</Text>
+              <Text style={[styles.tHeadCell, styles.colItemTotal]}>Tutar</Text>
+            </View>
+            {items.map((it) => (
+              <View key={it.id} style={styles.tRow}>
+                <Text style={[styles.tCell, styles.colItemDesc]}>{it.description}</Text>
+                <Text style={[styles.tCell, styles.colItemQty]}>{it.quantity}</Text>
+                <Text style={[styles.tCell, styles.colItemUnitPrice]}>{fmtMoney(it.unit_price, invoice.currency)}</Text>
+                <Text style={[styles.tCell, styles.colItemVat]}>{it.vat_rate}</Text>
+                <Text style={[styles.tCell, styles.colItemTotal]}>{fmtMoney(it.line_total, invoice.currency)}</Text>
+              </View>
+            ))}
+            <View style={[styles.tRow, { justifyContent: "flex-end", gap: 16 }]}>
+              <Text style={[styles.tCell, { fontWeight: 700 }]}>Ara Toplam: {fmtMoney(itemsSubtotal, invoice.currency)}</Text>
+              <Text style={[styles.tCell, { fontWeight: 700 }]}>KDV: {fmtMoney(kdvTotal, invoice.currency)}</Text>
+              <Text style={[styles.tCell, { fontWeight: 700 }]}>Genel Toplam: {fmtMoney(grandTotal, invoice.currency)}</Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.table}>
           <View style={styles.tHeadRow}>

@@ -19,6 +19,7 @@ import {
   Inbox,
   UserCog,
   Handshake,
+  Settings,
 } from "lucide-react";
 
 export type NavItem = {
@@ -107,7 +108,10 @@ export const navGroups: NavGroup[] = [
   },
   {
     label: "Finans",
-    items: [{ label: "Faturalar", href: "/finance", icon: Receipt, phase: "beta" }],
+    items: [
+      { label: "Faturalar", href: "/finance", icon: Receipt, phase: "beta" },
+      { label: "Fatura Ayarları", href: "/finance/settings", icon: Settings, phase: "beta" },
+    ],
   },
   {
     label: "Yönetim",

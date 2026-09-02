@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { syncInvoiceToParasut, type SyncableInvoiceItem } from "@/lib/parasut/client";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -34,22 +36,62 @@ export async function createInvoice(input: InvoiceInput): Promise<ActionResult> 
   }
 
   const { data: callerProfile } = await supabase.from("profiles").select("region").eq("id", user.id).single();
+  const region = (callerProfile as { region: string | null } | null)?.region ?? null;
 
-  const { error } = await supabase.from("invoices").insert({
-    customer_id: input.customerId,
-    proposal_id: input.proposalId,
-    amount: input.amount,
-    currency: input.currency || "USD",
-    issue_date: input.issueDate || new Date().toISOString().slice(0, 10),
-    due_date: input.dueDate || null,
-    notes: input.notes.trim() || null,
-    region: (callerProfile as { region: string | null } | null)?.region ?? null,
-    owner_id: user.id,
-    created_by: user.id,
-  });
+  const { data: inserted, error } = await supabase
+    .from("invoices")
+    .insert({
+      customer_id: input.customerId,
+      proposal_id: input.proposalId,
+      amount: input.amount,
+      currency: input.currency || "USD",
+      issue_date: input.issueDate || new Date().toISOString().slice(0, 10),
+      due_date: input.dueDate || null,
+      notes: input.notes.trim() || null,
+      region,
+      owner_id: user.id,
+      created_by: user.id,
+      parasut_sync_status: region === "tr" ? "pending" : "not_applicable",
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  // Kaynak teklif seçildiyse kalemleri (proposal_items) faturaya kopyala —
+  // Paraşüt itemization/KDV için şart. Teklif yoksa ya da kalemi yoksa, tek
+  // satırlık bir kalem oluştur ki Paraşüt'e göndermek her zaman mümkün olsun.
+  let itemsCopied = 0;
+  if (input.proposalId) {
+    const { data: proposalItems } = await supabase
+      .from("proposal_items")
+      .select("description, quantity, unit_price")
+      .eq("proposal_id", input.proposalId)
+      .order("created_at", { ascending: true });
+    if (proposalItems && proposalItems.length > 0) {
+      const rows = proposalItems.map((p, i) => ({
+        invoice_id: inserted.id,
+        description: p.description,
+        quantity: p.quantity,
+        unit_price: p.unit_price,
+        vat_rate: 20,
+        sort_order: i,
+      }));
+      const { error: itemsError, count } = await supabase.from("invoice_items").insert(rows, { count: "exact" });
+      if (!itemsError) itemsCopied = count ?? rows.length;
+    }
+  }
+  if (itemsCopied === 0) {
+    await supabase.from("invoice_items").insert({
+      invoice_id: inserted.id,
+      description: input.notes.trim() || "Fatura kalemi",
+      quantity: 1,
+      unit_price: input.amount,
+      vat_rate: 20,
+      sort_order: 0,
+    });
   }
 
   revalidatePath("/finance");
@@ -250,4 +292,150 @@ export async function deletePayment(paymentId: string, invoiceId: string): Promi
   revalidatePath("/finance");
   revalidatePath(`/finance/${invoiceId}`);
   return { ok: true };
+}
+
+// ----------------------------------------------------------------------------
+// Paraşüt senkronu — SADECE TR bölgesi. `db` parametresi RLS'li (createClient())
+// ya da admin (createAdminClient()) client olabilir: manuel "Paraşüt'e Gönder"
+// butonu (finance/[id]) RLS'li client ile çağırır (kullanıcının finance
+// yetkisi RLS tarafından zaten doğrulanır); otomatik gönderim ise proposal
+// kabul akışından (müşteri portalı dahil) admin client ile çağrılır, çünkü
+// müşteri oturumunun finance modülüne erişimi yoktur ama sistemin kendi
+// oluşturduğu faturayı sistemin kendisi göndermesi gerekir.
+// ----------------------------------------------------------------------------
+type MinimalSupabase = ReturnType<typeof createClient>;
+
+async function performParasutSync(db: MinimalSupabase, invoiceId: string): Promise<ActionResult> {
+  const { data: invoice } = await db
+    .from("invoices")
+    .select("id, customer_id, invoice_number, issue_date, due_date, currency, region, status")
+    .eq("id", invoiceId)
+    .single();
+  if (!invoice) {
+    return { ok: false, error: "Fatura bulunamadı ya da görüntüleme yetkin yok." };
+  }
+  if (invoice.region !== "tr") {
+    return { ok: false, error: "Paraşüt entegrasyonu sadece Türkiye (TR) bölgesindeki faturalar için geçerli." };
+  }
+
+  const [{ data: customer }, { data: items }] = await Promise.all([
+    db
+      .from("customers")
+      .select(
+        "company_name, primary_contact_name, primary_contact_email, primary_contact_phone, country, company_id, companies(legal_name, tax_office, tax_no, city, address)"
+      )
+      .eq("id", invoice.customer_id)
+      .single(),
+    db
+      .from("invoice_items")
+      .select("description, quantity, unit_price, vat_rate")
+      .eq("invoice_id", invoiceId)
+      .order("sort_order", { ascending: true }),
+  ]);
+
+  if (!customer) {
+    return { ok: false, error: "Müşteri bulunamadı." };
+  }
+
+  const syncItems: SyncableInvoiceItem[] = (items ?? []).map((i) => ({
+    description: i.description,
+    quantity: Number(i.quantity),
+    unit_price: Number(i.unit_price),
+    vat_rate: Number(i.vat_rate),
+  }));
+
+  const company = Array.isArray(customer.companies) ? customer.companies[0] : customer.companies;
+
+  const result = await syncInvoiceToParasut({
+    customer: {
+      company_name: customer.company_name,
+      primary_contact_name: customer.primary_contact_name,
+      primary_contact_email: customer.primary_contact_email,
+      primary_contact_phone: customer.primary_contact_phone,
+      country: customer.country,
+      company: company
+        ? {
+            legal_name: company.legal_name,
+            tax_office: company.tax_office,
+            tax_no: company.tax_no,
+            city: company.city,
+            address: company.address,
+          }
+        : null,
+    },
+    invoiceNumber: invoice.invoice_number,
+    issueDate: invoice.issue_date,
+    dueDate: invoice.due_date,
+    currency: invoice.currency,
+    items: syncItems,
+  });
+
+  if (result.ok) {
+    await db
+      .from("invoices")
+      .update({
+        parasut_id: result.parasutId,
+        parasut_invoice_no: result.parasutInvoiceNo,
+        parasut_sync_status: "synced",
+        parasut_synced_at: new Date().toISOString(),
+        sent_to_customer_at: new Date().toISOString(),
+        parasut_error: null,
+        status: invoice.status === "draft" ? "sent" : invoice.status,
+      })
+      .eq("id", invoiceId);
+  } else {
+    await db.from("invoices").update({ parasut_sync_status: "failed", parasut_error: result.error }).eq("id", invoiceId);
+  }
+
+  revalidatePath(`/finance/${invoiceId}`);
+  revalidatePath("/finance");
+
+  return result.ok ? { ok: true } : { ok: false, error: result.error };
+}
+
+// Manuel "Paraşüt'e Gönder" butonu — /finance/[id] sayfası.
+export async function syncInvoiceToParasutAction(invoiceId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Oturum bulunamadı." };
+  }
+  return performParasutSync(supabase, invoiceId);
+}
+
+// Teklif kabul edildiğinde (bkz. DB trigger auto_create_invoice_from_proposal)
+// otomatik oluşan taslak faturayı, ayarlarda auto_send_to_customer açıksa,
+// aynı akışın içinde Paraşüt'e göndermeyi dener. Müşteri portalından
+// (müşteri teklifi kabul ettiğinde) da çağrılabildiği için admin client
+// kullanır — ama SADECE proposalId üzerinden zaten var olan (trigger'ın
+// oluşturduğu) faturayı işler, keyfi bir DB erişimi sağlamaz. Best-effort:
+// başarısızlığı teklif kabul akışını ASLA bozmamalı.
+export async function maybeAutoSyncAcceptedProposalInvoice(proposalId: string): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const encKey = process.env.PARASUT_SETTINGS_ENC_KEY;
+    if (!encKey) return;
+
+    const { data: settingsRows } = await admin.rpc("parasut_get_decrypted_credentials", { p_enc_key: encKey });
+    const settings = settingsRows?.[0];
+    if (!settings || !settings.is_active || !settings.auto_send_to_customer) {
+      return;
+    }
+
+    const { data: invoice } = await admin
+      .from("invoices")
+      .select("id, region, parasut_sync_status")
+      .eq("proposal_id", proposalId)
+      .maybeSingle();
+    if (!invoice || invoice.region !== "tr" || invoice.parasut_sync_status !== "pending") {
+      return;
+    }
+
+    await performParasutSync(admin as unknown as MinimalSupabase, invoice.id);
+  } catch {
+    // Otomatik senkron best-effort'tur — bu fonksiyonun başarısız olması
+    // teklif kabul akışını ASLA bozmamalı, bu yüzden hata yutulur.
+  }
 }

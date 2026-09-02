@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { maybeAutoSyncAcceptedProposalInvoice } from "@/app/(dashboard)/finance/actions";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -314,6 +315,10 @@ export async function updateProposalStatus(
     return { ok: false, error: "Bu teklif gönderilmiş durumda değil ya da güncelleme yetkin yok." };
   }
 
+  if (status === "accepted") {
+    await maybeAutoSyncAcceptedProposalInvoice(id);
+  }
+
   revalidatePath("/sales/proposals");
   revalidatePath(`/sales/proposals/${id}`);
   return { ok: true };
@@ -340,6 +345,8 @@ export async function customerAcceptProposal(id: string): Promise<ActionResult> 
   if (!count) {
     return { ok: false, error: "Bu teklif şu anda karar verilebilir durumda değil." };
   }
+
+  await maybeAutoSyncAcceptedProposalInvoice(id);
 
   revalidatePath("/portal");
   revalidatePath(`/portal/proposals/${id}`);
@@ -442,6 +449,8 @@ export async function customerAcceptProposalWithSignedDocument(
   if (!count) {
     return { ok: false, error: "Bu teklif şu anda imzalı belge ile onaylanabilir durumda değil." };
   }
+
+  await maybeAutoSyncAcceptedProposalInvoice(id);
 
   revalidatePath("/portal");
   revalidatePath(`/portal/proposals/${id}`);

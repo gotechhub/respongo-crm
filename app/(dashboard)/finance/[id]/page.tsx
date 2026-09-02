@@ -5,8 +5,18 @@ import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { InvoiceStatusPanel } from "./invoice-status-panel";
 import { PaymentsPanel, type PaymentRow } from "./payments-panel";
+import { ParasutPanel } from "./parasut-panel";
 import type { CustomerOption, UnbilledProposal } from "../invoice-form";
 import type { InvoiceInput, InvoiceStatus } from "../actions";
+
+type InvoiceItemRow = {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number;
+  line_total: number;
+};
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -40,8 +50,15 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
     notFound();
   }
 
-  const [{ data: customer }, { data: proposal }, { data: paymentsRaw }, { data: customerOptions }, { data: proposalOptions }, { data: ownerRows }] =
-    await Promise.all([
+  const [
+    { data: customer },
+    { data: proposal },
+    { data: paymentsRaw },
+    { data: customerOptions },
+    { data: proposalOptions },
+    { data: ownerRows },
+    { data: invoiceItemsRaw },
+  ] = await Promise.all([
       supabase.from("customers").select("id, company_name").eq("id", invoice.customer_id).single(),
       invoice.proposal_id
         ? supabase.from("proposals").select("id, title").eq("id", invoice.proposal_id).single()
@@ -62,7 +79,14 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
         .from("profiles")
         .select("id, full_name, email")
         .in("id", Array.from(new Set([invoice.owner_id, invoice.created_by].filter(Boolean)))),
+      supabase
+        .from("invoice_items")
+        .select("id, description, quantity, unit_price, vat_rate, line_total")
+        .eq("invoice_id", params.id)
+        .order("sort_order", { ascending: true }),
     ]);
+
+  const invoiceItems = (invoiceItemsRaw ?? []) as InvoiceItemRow[];
 
   const payments = (paymentsRaw ?? []) as PaymentRow[];
   const paidTotal = payments.filter((p) => p.currency === invoice.currency).reduce((sum, p) => sum + Number(p.amount), 0);
@@ -139,15 +163,58 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               </Link>
             </div>
           )}
+
+          {invoiceItems.length > 0 && (
+            <div className="mt-4 border-t border-rg-line pt-4">
+              <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">Kalemler</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[12.5px]">
+                  <thead>
+                    <tr className="text-left text-[10.5px] font-bold uppercase tracking-[.3px] text-rg-ink-faint">
+                      <th className="pb-2 pr-3">Açıklama</th>
+                      <th className="pb-2 pr-3 text-right">Miktar</th>
+                      <th className="pb-2 pr-3 text-right">Birim Fiyat</th>
+                      <th className="pb-2 pr-3 text-right">KDV %</th>
+                      <th className="pb-2 text-right">Tutar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoiceItems.map((item) => (
+                      <tr key={item.id} className="border-t border-rg-line/60">
+                        <td className="py-2 pr-3 text-rg-ink">{item.description}</td>
+                        <td className="py-2 pr-3 text-right text-rg-ink-soft tabular-nums">{item.quantity}</td>
+                        <td className="py-2 pr-3 text-right text-rg-ink-soft tabular-nums">
+                          {fmtMoney(Number(item.unit_price) || 0, invoice.currency)}
+                        </td>
+                        <td className="py-2 pr-3 text-right text-rg-ink-soft tabular-nums">{item.vat_rate}</td>
+                        <td className="py-2 text-right font-semibold text-rg-ink tabular-nums">
+                          {fmtMoney(Number(item.line_total) || 0, invoice.currency)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
-        <PaymentsPanel
-          invoiceId={invoice.id}
-          currency={invoice.currency}
-          invoiceStatus={invoice.status}
-          payments={payments}
-          remaining={remaining}
-        />
+        <div className="flex flex-col gap-5">
+          <PaymentsPanel
+            invoiceId={invoice.id}
+            currency={invoice.currency}
+            invoiceStatus={invoice.status}
+            payments={payments}
+            remaining={remaining}
+          />
+          <ParasutPanel
+            invoiceId={invoice.id}
+            syncStatus={invoice.parasut_sync_status}
+            parasutInvoiceNo={invoice.parasut_invoice_no}
+            parasutError={invoice.parasut_error}
+            parasutSyncedAt={invoice.parasut_synced_at}
+          />
+        </div>
       </div>
     </>
   );
