@@ -35,3 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 oto-push-log.txt
+
+# oto-push watcher (DERS 32 - olay tabanli otomatik push)
+oto-push-watcher-log.txt
+.oto-push-watcher.lock
