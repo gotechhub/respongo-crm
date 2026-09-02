@@ -32,6 +32,9 @@ export type TemplateOption = {
   language: "tr" | "en";
   description: string | null;
   valid_days: number;
+  // Teklif Şablonları 2.0: bölüm bazlı (proposal_template_sections'ı olan) şablonlar TR+EN
+  // içeriği tek satırda taşır — sihirbazın dil seçicisiyle filtrelenmez, her zaman gösterilir.
+  isBilingual: boolean;
 };
 
 type LineItem = {
@@ -164,7 +167,9 @@ export function ProposalWizard({
   }, [items]);
 
   const filteredTemplates = templates.filter(
-    (t) => t.language === language && (productFilter === "all" || t.product === productFilter || t.product === null)
+    (t) =>
+      (t.isBilingual || t.language === language) &&
+      (productFilter === "all" || t.product === productFilter || t.product === null)
   );
 
   const visiblePriceLists =
@@ -601,7 +606,14 @@ export function ProposalWizard({
                   }
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[12.5px] font-bold text-rg-ink">{t.name}</span>
+                    <span className="text-[12.5px] font-bold text-rg-ink">
+                      {t.name}
+                      {t.isBilingual && (
+                        <span className="ml-1.5 inline-flex items-center rounded-full bg-golms-tint px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-golms">
+                          2.0
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[10.5px] font-semibold text-rg-ink-faint">{t.valid_days} gün</span>
                   </div>
                   {t.description && <div className="mt-1 text-[11.5px] text-rg-ink-faint">{t.description}</div>}

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MessageSquareWarning } from "lucide-react";
+import { ArrowLeft, Download, MessageSquareWarning } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { SignedDocumentDownloadButton } from "@/components/storage/signed-document-download-button";
 import { CustomerDecisionPanel } from "./customer-decision-panel";
 import {
   PROPOSAL_STATUS_LABEL,
@@ -48,13 +49,24 @@ export default async function PortalProposalDetailPage({ params }: { params: { i
 
   return (
     <>
-      <Link
-        href="/portal"
-        className="mb-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-rg-ink-soft hover:text-primary"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Tekliflerime dön
-      </Link>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <Link
+          href="/portal"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-rg-ink-soft hover:text-primary"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Tekliflerime dön
+        </Link>
+        <a
+          href={`/api/proposals/${proposal.id}/pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-[8px] border border-rg-line bg-rg-surface px-3 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:border-primary hover:text-primary"
+        >
+          <Download className="h-3.5 w-3.5" />
+          PDF İndir
+        </a>
+      </div>
 
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
@@ -84,7 +96,17 @@ export default async function PortalProposalDetailPage({ params }: { params: { i
 
       {status === "sent" && (
         <div className="mb-5">
-          <CustomerDecisionPanel proposalId={proposal.id} />
+          <CustomerDecisionPanel
+            proposalId={proposal.id}
+            approvalMethod={(proposal.approval_method as "e_approval" | "signed_upload") ?? "e_approval"}
+          />
+        </div>
+      )}
+
+      {status === "accepted" && proposal.signed_document_url && (
+        <div className="mb-5 rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
+          <div className="mb-2 text-[13px] font-bold text-rg-ink">Yüklediğin İmzalı Belge</div>
+          <SignedDocumentDownloadButton path={proposal.signed_document_url as string} />
         </div>
       )}
 

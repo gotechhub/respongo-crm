@@ -41,7 +41,7 @@ export default async function NewProposalPage() {
         .order("product", { ascending: true }),
       supabase
         .from("proposal_templates")
-        .select("id, name, product, language, description, valid_days")
+        .select("id, name, product, language, description, valid_days, proposal_template_sections(id)")
         .eq("is_active", true)
         .order("name", { ascending: true }),
     ]);
@@ -80,6 +80,9 @@ export default async function NewProposalPage() {
     language: t.language as TemplateOption["language"],
     description: t.description as string | null,
     valid_days: t.valid_days as number,
+    // Teklif Şablonları 2.0: bölüm bazlı (proposal_template_sections'ı olan) şablonlar TR+EN
+    // içeriği tek satırda taşır — sihirbazın dil seçicisinden bağımsız olarak listelenmeli.
+    isBilingual: ((t.proposal_template_sections ?? []) as { id: string }[]).length > 0,
   }));
 
   return (

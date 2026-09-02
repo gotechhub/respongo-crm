@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { REGION_LABELS_TR, type Region, type UserRole } from "@/lib/roles";
 import { ProposalStatusPanel } from "./proposal-status-panel";
 import { ProposalApprovalPanel } from "./proposal-approval-panel";
+import { ApprovalMethodSelector } from "./approval-method-selector";
 import { ProposalEditor, type EditableProposalItem, type PriceListForEditor } from "./proposal-editor";
+import { SignedDocumentDownloadButton } from "@/components/storage/signed-document-download-button";
 import type { ProductKey, ProposalStatus } from "../actions";
 
 const PRODUCT_LABEL: Record<string, string> = {
@@ -179,6 +181,17 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
             <InfoField label="Sahibi" value={proposal.owner_id ? ownerNames[proposal.owner_id] : "Atanmamış"} />
             <InfoField label="Gönderim Tarihi" value={fmtDate(proposal.sent_at)} />
             <InfoField label="Oluşturma Tarihi" value={fmtDate(proposal.created_at)} />
+            {isEditable ? (
+              <ApprovalMethodSelector
+                proposalId={proposal.id}
+                currentMethod={(proposal.approval_method as "e_approval" | "signed_upload") ?? "e_approval"}
+              />
+            ) : (
+              <InfoField
+                label="Onay Yöntemi"
+                value={proposal.approval_method === "signed_upload" ? "İmzalı Yükleme" : "E-Onay"}
+              />
+            )}
             {proposal.approved_by && (
               <>
                 <InfoField label="Onaylayan" value={ownerNames[proposal.approved_by]} />
@@ -186,6 +199,14 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
               </>
             )}
           </div>
+          {proposal.signed_document_url && (
+            <div className="mt-4 border-t border-rg-line pt-4">
+              <SignedDocumentDownloadButton
+                path={proposal.signed_document_url as string}
+                label="Müşterinin Yüklediği İmzalı Belge"
+              />
+            </div>
+          )}
           {targetHref && (
             <div className="mt-4 border-t border-rg-line pt-4">
               <Link href={targetHref} className="text-[12px] font-semibold text-primary hover:underline">

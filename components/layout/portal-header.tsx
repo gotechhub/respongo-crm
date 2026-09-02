@@ -28,20 +28,45 @@ export function PortalHeader({ companyName }: { companyName: string }) {
         <div className="h-6 w-px bg-rg-line" />
         <div className="text-[13px] font-semibold text-rg-ink">{companyName}</div>
       </div>
-      <div className="flex items-center gap-2">
-        <ThemeToggle />
+      <div className="flex flex-wrap items-center justify-end gap-1">
         <Link
           href="/portal"
-          className="rounded-[8px] px-3 py-1.5 text-[12.5px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
+          className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
         >
           Tekliflerim
         </Link>
         <Link
+          href="/portal/contracts"
+          className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
+        >
+          Sözleşmelerim
+        </Link>
+        <Link
+          href="/portal/licenses"
+          className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
+        >
+          Lisanslarım
+        </Link>
+        <Link
+          href="/portal/projects"
+          className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
+        >
+          Projelerim
+        </Link>
+        <Link
+          href="/portal/requests"
+          className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
+        >
+          Taleplerim
+        </Link>
+        <Link
           href="/portal/support"
-          className="rounded-[8px] px-3 py-1.5 text-[12.5px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
+          className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
         >
           Destek
         </Link>
+        <div className="mx-0.5 h-5 w-px bg-rg-line" />
+        <ThemeToggle />
         <button
           onClick={handleSignOut}
           title="Çıkış yap"

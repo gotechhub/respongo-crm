@@ -390,6 +390,64 @@ export async function customerRequestProposalRevision(id: string, note: string):
   return { ok: true };
 }
 
+// V2 Revizeler bölüm A/B: teklif "sent" durumuna geçmeden önce satışçı/founder hangi onay
+// yönteminin bekleneceğini seçer — e_approval (portal'daki Kabul/Red/Revizyon butonları) veya
+// signed_upload (müşteri imzalı belgeyi portal'dan yüklemeden onaylayamaz). Sadece taslak/revizyon
+// aşamasında değiştirilebilir — teklif zaten gönderildikten sonra yöntem müşteriyi şaşırtmasın diye
+// kilitli tutuluyor.
+export async function updateProposalApprovalMethod(
+  id: string,
+  method: "e_approval" | "signed_upload"
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("proposals")
+    .update({ approval_method: method }, { count: "exact" })
+    .eq("id", id)
+    .in("status", ["draft", "revision_requested"]);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Onay yöntemi sadece taslak/revizyon aşamasındaki tekliflerde değiştirilebilir." };
+  }
+
+  revalidatePath(`/sales/proposals/${id}`);
+  return { ok: true };
+}
+
+// Müşteri, imzalı onay (approval_method='signed_upload') bekleyen bir teklifte "Kabul Ediyorum"
+// yerine imzalanmış belgeyi portal'dan (Supabase Storage: signed-documents bucket) yükler — bu
+// fonksiyon dosya storage_path'ini (client tarafında zaten storage RLS'i geçerek yüklenmiş olan
+// dosyanın yolunu) proposals.signed_document_url'e yazar ve teklifi 'accepted' yapar. Yükleme
+// storage RLS'i (signed_documents_customer_insert) tarafından zaten doğrulanıyor — burada sadece
+// teklifin gerçekten signed_upload + sent durumunda olduğunu tekrar (defense-in-depth) kontrol
+// ediyoruz.
+export async function customerAcceptProposalWithSignedDocument(
+  id: string,
+  storagePath: string
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("proposals")
+    .update({ status: "accepted", signed_document_url: storagePath }, { count: "exact" })
+    .eq("id", id)
+    .eq("status", "sent")
+    .eq("approval_method", "signed_upload");
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu teklif şu anda imzalı belge ile onaylanabilir durumda değil." };
+  }
+
+  revalidatePath("/portal");
+  revalidatePath(`/portal/proposals/${id}`);
+  return { ok: true };
+}
+
 export async function deleteProposal(id: string): Promise<ActionResult> {
   const supabase = createClient();
   const { error, count } = await supabase.from("proposals").delete({ count: "exact" }).eq("id", id);
