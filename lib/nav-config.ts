@@ -17,6 +17,7 @@ import {
   KeyRound,
   LifeBuoy,
   Inbox,
+  UserCog,
 } from "lucide-react";
 
 export type NavItem = {
@@ -51,6 +52,7 @@ export const navGroups: NavGroup[] = [
     label: "Satış",
     items: [
       { label: "Performansım", href: "/sales/performance", icon: TrendingUp, phase: "beta" },
+      { label: "Satış Ekibi", href: "/sales/team", icon: UserCog, phase: "beta" },
       { label: "Müşteri Havuzu", href: "/sales", icon: Users, phase: "beta" },
       { label: "Müşteri Adayları", href: "/sales/leads", icon: FileText, phase: "beta" },
       { label: "Müşteriler", href: "/sales/customers", icon: Users, phase: "beta" },
