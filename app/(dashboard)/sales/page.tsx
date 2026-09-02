@@ -4,8 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import type { Region } from "@/lib/roles";
 import { parsePagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
-import { RegionFilter } from "@/components/ui/region-filter";
+import { RegionTabs } from "@/components/ui/region-tabs";
 import { PoolTable, type PoolRow } from "./pool-table";
+import { PoolImportPanel } from "./import-panel";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -73,10 +74,11 @@ export default async function CustomerPoolPage({
         </Suspense>
         {isFounder && (
           <Suspense fallback={<div className="h-[38px] w-[140px]" />}>
-            <RegionFilter />
+            <RegionTabs />
           </Suspense>
         )}
       </div>
+      <PoolImportPanel isFounder={isFounder} />
       <PoolTable
         rows={rows}
         ownerNames={ownerNames}

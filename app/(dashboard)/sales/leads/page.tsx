@@ -4,8 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import type { Region, UserRole } from "@/lib/roles";
 import { parsePagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
-import { RegionFilter } from "@/components/ui/region-filter";
+import { RegionTabs } from "@/components/ui/region-tabs";
 import { LeadsTable, type LeadRow } from "./leads-table";
+import { LeadsImportPanel } from "./import-panel";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,10 +23,13 @@ export default async function LeadsPage({
 
   const { data: callerProfile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, region")
     .eq("id", user?.id ?? "")
     .single();
-  const isFounder = (callerProfile as { role: UserRole | null } | null)?.role === "founder";
+  const myRole = (callerProfile as { role: UserRole | null; region: Region | null } | null)?.role ?? null;
+  const isFounder = myRole === "founder";
+  const isManager = isFounder || myRole === "region_admin";
+  const currentRegion = ((callerProfile as { region: Region | null } | null)?.region ?? "") as Region | "";
 
   const { page, pageSize, from, to } = parsePagination(searchParams);
   const q = typeof searchParams.q === "string" ? searchParams.q.trim() : "";
@@ -73,10 +77,11 @@ export default async function LeadsPage({
         </Suspense>
         {isFounder && (
           <Suspense fallback={<div className="h-[38px] w-[140px]" />}>
-            <RegionFilter />
+            <RegionTabs />
           </Suspense>
         )}
       </div>
+      <LeadsImportPanel isFounder={isFounder} isManager={isManager} currentRegion={currentRegion} />
       <LeadsTable rows={rows} ownerNames={ownerNames} pagination={{ totalCount: count ?? 0, page, pageSize }} />
     </>
   );
