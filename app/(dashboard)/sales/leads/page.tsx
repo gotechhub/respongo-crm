@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import type { Region, UserRole } from "@/lib/roles";
-import { parsePagination } from "@/components/ui/pagination";
+import { parsePagination } from "@/lib/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { RegionTabs } from "@/components/ui/region-tabs";
 import { LeadsTable, type LeadRow } from "./leads-table";

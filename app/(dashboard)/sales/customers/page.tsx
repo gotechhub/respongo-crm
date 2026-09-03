@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { REGION_LABELS_TR, type Region } from "@/lib/roles";
-import { Pagination, parsePagination } from "@/components/ui/pagination";
+import { Pagination } from "@/components/ui/pagination";
+import { parsePagination } from "@/lib/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 
 export const dynamic = "force-dynamic";

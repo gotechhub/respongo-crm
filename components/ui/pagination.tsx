@@ -2,8 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
+import { PAGE_SIZE_OPTIONS } from "@/lib/pagination";
 
 /**
  * Standart liste alt bilgisi: "sayfa başına 10/20/50" + önceki/sonraki sayfa.
@@ -80,16 +79,4 @@ export function Pagination({ totalCount, page, pageSize }: { totalCount: number;
       </div>
     </div>
   );
-}
-
-/** Server component'lerde searchParams'tan page/pageSize okumak için ortak yardımcı. */
-export function parsePagination(searchParams: { [key: string]: string | string[] | undefined }) {
-  const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
-  const rawPageSize = Array.isArray(searchParams.pageSize) ? searchParams.pageSize[0] : searchParams.pageSize;
-  const page = Math.max(1, Number(rawPage) || 1);
-  const pageSizeCandidate = Number(rawPageSize) || 20;
-  const pageSize = PAGE_SIZE_OPTIONS.includes(pageSizeCandidate) ? pageSizeCandidate : 20;
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  return { page, pageSize, from, to };
 }

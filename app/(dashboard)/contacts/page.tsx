@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import type { Region, UserRole } from "@/lib/roles";
-import { parsePagination } from "@/components/ui/pagination";
+import { parsePagination } from "@/lib/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { RegionFilter } from "@/components/ui/region-filter";
 import { ContactsPanel, type ContactRow } from "./contacts-panel";
