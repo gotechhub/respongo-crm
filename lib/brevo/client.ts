@@ -15,34 +15,15 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Region } from "@/lib/roles";
+import { getMarketingSettings, type DecryptedMarketingSettings } from "@/lib/marketing/settings";
 
 const BREVO_BASE = "https://api.brevo.com/v3";
 
-function encKey(): string {
-  const key = process.env.MARKETING_SETTINGS_ENC_KEY;
-  if (!key) {
-    throw new Error(
-      "MARKETING_SETTINGS_ENC_KEY ortam değişkeni tanımlı değil — Vercel proje ayarlarına eklenmesi gerekiyor."
-    );
-  }
-  return key;
-}
-
-type DecryptedMarketingSettings = {
-  api_key: string | null;
-  brevo_list_id_tr: string | null;
-  brevo_list_id_global: string | null;
-  is_active: boolean;
-  auto_sync_newsletter: boolean;
-};
-
-async function getSettings(): Promise<DecryptedMarketingSettings | null> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("marketing_get_decrypted_credentials", { p_enc_key: encKey() });
-  if (error) throw new Error(`Pazarlama ayarları okunamadı: ${error.message}`);
-  const row = (data as DecryptedMarketingSettings[] | null)?.[0];
-  return row ?? null;
-}
+// NOT (bölüm G.2 refactor): getSettings/encKey burada tekrar tanımlanmıyor — hem
+// bu client hem JivoChat webhook'u AYNI marketing_settings singleton'ını okuyacağı
+// için ortak yardımcı lib/marketing/settings.ts'e taşındı (DERS 26 tarzı: tekrar
+// eden kodu paylaşılan tek noktaya çek).
+const getSettings = getMarketingSettings;
 
 class BrevoError extends Error {}
 

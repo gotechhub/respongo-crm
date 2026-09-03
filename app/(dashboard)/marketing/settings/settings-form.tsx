@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { saveBrevoCredentials, updateMarketingPreferences, testBrevoConnectionAction } from "./actions";
+import {
+  saveBrevoCredentials,
+  updateMarketingPreferences,
+  testBrevoConnectionAction,
+  updateIntegrationSettings,
+} from "./actions";
 
 const inputClass =
   "rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary";
@@ -18,6 +23,9 @@ export type MarketingSettingsDisplay = {
   last_test_ok: boolean | null;
   last_test_message: string | null;
   updated_at: string | null;
+  ga4_measurement_id: string | null;
+  jivochat_widget_id: string | null;
+  jivochat_auto_lead: boolean;
 };
 
 function fmtDateTime(iso: string | null) {
@@ -30,13 +38,18 @@ export function MarketingSettingsForm({ settings }: { settings: MarketingSetting
   const [listIdTr, setListIdTr] = useState(settings?.brevo_list_id_tr ?? "");
   const [listIdGlobal, setListIdGlobal] = useState(settings?.brevo_list_id_global ?? "");
   const [autoSync, setAutoSync] = useState(settings?.auto_sync_newsletter ?? true);
+  const [ga4Id, setGa4Id] = useState(settings?.ga4_measurement_id ?? "");
+  const [jivoWidgetId, setJivoWidgetId] = useState(settings?.jivochat_widget_id ?? "");
+  const [jivoAutoLead, setJivoAutoLead] = useState(settings?.jivochat_auto_lead ?? true);
 
   const [savePending, startSave] = useTransition();
   const [prefPending, startPref] = useTransition();
   const [testPending, startTest] = useTransition();
+  const [integrationPending, startIntegration] = useTransition();
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [prefMsg, setPrefMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [integrationMsg, setIntegrationMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   function handleSaveCredentials() {
     setSaveMsg(null);
@@ -64,6 +77,18 @@ export function MarketingSettingsForm({ settings }: { settings: MarketingSetting
     startTest(async () => {
       const result = await testBrevoConnectionAction();
       setTestMsg({ ok: result.ok, text: result.message });
+    });
+  }
+
+  function handleSaveIntegrations() {
+    setIntegrationMsg(null);
+    startIntegration(async () => {
+      const result = await updateIntegrationSettings({
+        ga4MeasurementId: ga4Id,
+        jivochatWidgetId: jivoWidgetId,
+        jivochatAutoLead: jivoAutoLead,
+      });
+      setIntegrationMsg(result.ok ? { ok: true, text: "Entegrasyon ayarları kaydedildi." } : { ok: false, text: result.error });
     });
   }
 
@@ -159,12 +184,66 @@ export function MarketingSettingsForm({ settings }: { settings: MarketingSetting
         )}
       </div>
 
+      <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
+        <div className="mb-1 text-[13px] font-bold text-rg-ink">JivoChat Canlı Sohbet</div>
+        <p className="mb-4 text-[12px] text-rg-ink-soft">
+          respongo.com&apos;daki JivoChat widget&apos;ının hangi hesaba ait olduğunu not almak için widget ID&apos;sini
+          buraya girebilirsin (bilgi amaçlı — kayıt tutmak için). Gerçek entegrasyon, JivoChat panelinden
+          <code className="mx-1 rounded bg-rg-surface-alt px-1.5 py-0.5 text-[11.5px]">/api/webhooks/jivochat-chat</code>
+          adresine bir &quot;Webhook&quot; tanımlanmasıyla çalışır — aşağıdaki nota bak.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>JivoChat Widget ID (bilgi amaçlı)</label>
+            <input value={jivoWidgetId} onChange={(e) => setJivoWidgetId(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Google Analytics 4 Ölçüm ID&apos;si</label>
+            <input
+              value={ga4Id}
+              onChange={(e) => setGa4Id(e.target.value)}
+              placeholder="G-XXXXXXXXXX"
+              className={inputClass}
+            />
+          </div>
+        </div>
+        <label className="mt-4 flex items-center gap-2.5 text-[12.8px] text-rg-ink">
+          <input type="checkbox" checked={jivoAutoLead} onChange={(e) => setJivoAutoLead(e.target.checked)} className="h-4 w-4" />
+          Sohbette e-posta/telefon bırakan ziyaretçilerden otomatik lead oluştur
+        </label>
+        <div className="mt-4">
+          <button
+            onClick={handleSaveIntegrations}
+            disabled={integrationPending}
+            className="inline-flex items-center gap-2 rounded-[10px] bg-primary px-4 py-2.5 text-[12.8px] font-semibold text-white transition-colors hover:brightness-[1.08] disabled:opacity-50"
+          >
+            {integrationPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Kaydet
+          </button>
+        </div>
+        {integrationMsg && (
+          <div className={"mt-3 text-[12px] " + (integrationMsg.ok ? "text-gofactory" : "text-destructive")}>
+            {integrationMsg.text}
+          </div>
+        )}
+      </div>
+
       <div className="rounded-2xl bg-gocatalog-tint p-5 text-[12.5px] text-rg-ink-soft">
-        <span className="font-bold text-rg-ink">Web sitesi entegrasyonu:</span> respongo.com&apos;daki form,
-        <code className="mx-1 rounded bg-rg-surface px-1.5 py-0.5 text-[11.5px]">/api/webhooks/website-lead</code>
-        adresine <code className="mx-1 rounded bg-rg-surface px-1.5 py-0.5 text-[11.5px]">WEBSITE_LEAD_WEBHOOK_SECRET</code>
-        ortam değişkenindeki sırla POST isteği göndererek yeni lead oluşturabilir — bu, site tarafından ayrıca
-        yapılandırılmalı.
+        <div className="mb-2">
+          <span className="font-bold text-rg-ink">Web sitesi entegrasyonu:</span> respongo.com&apos;daki form,
+          <code className="mx-1 rounded bg-rg-surface px-1.5 py-0.5 text-[11.5px]">/api/webhooks/website-lead</code>
+          adresine <code className="mx-1 rounded bg-rg-surface px-1.5 py-0.5 text-[11.5px]">WEBSITE_LEAD_WEBHOOK_SECRET</code>
+          ortam değişkenindeki sırla POST isteği göndererek yeni lead oluşturabilir — bu, site tarafından ayrıca
+          yapılandırılmalı.
+        </div>
+        <div>
+          <span className="font-bold text-rg-ink">JivoChat entegrasyonu:</span> JivoChat panelinden (Ayarlar → Webhooks)
+          <code className="mx-1 rounded bg-rg-surface px-1.5 py-0.5 text-[11.5px]">/api/webhooks/jivochat-chat?secret=...</code>
+          adresine sohbet bitince POST atacak bir webhook tanımlanmalı — sırrı{" "}
+          <code className="mx-1 rounded bg-rg-surface px-1.5 py-0.5 text-[11.5px]">JIVOCHAT_WEBHOOK_SECRET</code>
+          ortam değişkeninde tanımlı olmalı. Ziyaretçi iletişim bilgisi bıraktıysa yukarıdaki tercihe göre otomatik
+          lead oluşturulur, bırakmasa bile sohbet kaydı görünürlükte kalır.
+        </div>
       </div>
     </div>
   );

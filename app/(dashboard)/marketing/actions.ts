@@ -12,6 +12,8 @@ export type CampaignChannel =
   | "linkedin_ads"
   | "instagram_ads"
   | "youtube_ads"
+  | "facebook_ads"
+  | "tiktok_ads"
   | "email"
   | "content"
   | "webinar"

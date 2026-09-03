@@ -11,6 +11,8 @@ export const CAMPAIGN_CHANNEL_LABEL: Record<CampaignChannel, string> = {
   linkedin_ads: "LinkedIn Reklamları",
   instagram_ads: "Instagram Reklamları",
   youtube_ads: "YouTube Reklamları",
+  facebook_ads: "Meta (Facebook) Reklamları",
+  tiktok_ads: "TikTok Reklamları",
   email: "E-posta Kampanyası",
   content: "İçerik Pazarlaması",
   webinar: "Webinar",

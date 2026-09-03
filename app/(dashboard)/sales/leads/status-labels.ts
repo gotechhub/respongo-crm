@@ -31,6 +31,9 @@ export type LeadSource =
   | "ad_linkedin"
   | "ad_instagram"
   | "ad_youtube"
+  | "ad_facebook"
+  | "ad_tiktok"
+  | "live_chat"
   | "social_other"
   | "other";
 
@@ -44,6 +47,9 @@ export const LEAD_SOURCE_LABEL: Record<LeadSource, string> = {
   ad_linkedin: "LinkedIn Ads",
   ad_instagram: "Instagram Ads",
   ad_youtube: "YouTube Ads",
+  ad_facebook: "Meta (Facebook) Ads",
+  ad_tiktok: "TikTok Ads",
+  live_chat: "Canlı Sohbet (JivoChat)",
   social_other: "Diğer sosyal medya",
   other: "Diğer",
 };

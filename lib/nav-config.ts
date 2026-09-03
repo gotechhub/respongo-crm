@@ -20,6 +20,7 @@ import {
   UserCog,
   Handshake,
   Settings,
+  CalendarDays,
 } from "lucide-react";
 
 export type NavItem = {
@@ -106,6 +107,7 @@ export const navGroups: NavGroup[] = [
     label: "Pazarlama",
     items: [
       { label: "Kampanyalar", href: "/marketing", icon: Megaphone, phase: "beta" },
+      { label: "İçerik Takvimi", href: "/marketing/calendar", icon: CalendarDays, phase: "beta" },
       { label: "Pazarlama Ayarları", href: "/marketing/settings", icon: Settings, phase: "beta" },
     ],
   },

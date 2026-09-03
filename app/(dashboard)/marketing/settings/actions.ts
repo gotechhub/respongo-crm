@@ -62,6 +62,28 @@ export async function updateMarketingPreferences(autoSyncNewsletter: boolean): P
   return { ok: true };
 }
 
+export type IntegrationSettingsInput = {
+  ga4MeasurementId: string;
+  jivochatWidgetId: string;
+  jivochatAutoLead: boolean;
+};
+
+// GA4 ölçüm ID'si ve JivoChat widget/otomatik-lead tercihi — bölüm G.2.
+export async function updateIntegrationSettings(input: IntegrationSettingsInput): Promise<ActionResult> {
+  const guard = await requireFounder();
+  if (!guard.ok) return guard;
+
+  const { error } = await guard.supabase.rpc("marketing_update_integration_settings", {
+    p_ga4_measurement_id: input.ga4MeasurementId,
+    p_jivochat_widget_id: input.jivochatWidgetId,
+    p_jivochat_auto_lead: input.jivochatAutoLead,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/marketing/settings");
+  return { ok: true };
+}
+
 export type TestConnectionResult = { ok: boolean; message: string };
 
 export async function testBrevoConnectionAction(): Promise<TestConnectionResult> {

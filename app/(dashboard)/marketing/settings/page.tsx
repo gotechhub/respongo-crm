@@ -47,7 +47,7 @@ export default async function MarketingSettingsPage() {
       </div>
       <Topbar
         title="Pazarlama Ayarları"
-        subtitle="Brevo bülten bağlantısı ve web sitesi lead webhook'u için gerekli bilgiler."
+        subtitle="Brevo bülten, web sitesi lead webhook'u, JivoChat canlı sohbet ve Google Analytics bağlantıları."
       />
       <MarketingSettingsForm settings={settings} />
     </>
