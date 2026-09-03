@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PortalHeader } from "@/components/layout/portal-header";
+import { ViewAsBanner } from "@/components/layout/view-as-banner";
+import { isViewAsActive } from "@/lib/view-as/actions";
 
 // Müşteri Portalı — iç CRM'den (app/(dashboard)) TAMAMEN ayrı bir layout.
 // Rol her istekte taze okunmalı (bir satışçı portal erişimini az önce
@@ -86,8 +88,11 @@ export default async function PortalLayout({ children }: { children: React.React
     .eq("id", link.customer_id)
     .single();
 
+  const viewAsActive = await isViewAsActive();
+
   return (
     <div className="min-h-screen bg-rg-bg">
+      {viewAsActive && <ViewAsBanner name={typedProfile.full_name || user.email || "Müşteri"} />}
       <PortalHeader companyName={customer?.company_name ?? "Portalım"} />
       <main className="mx-auto max-w-[900px] px-6 py-8">{children}</main>
     </div>

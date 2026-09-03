@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
+import { ViewAsBanner } from "@/components/layout/view-as-banner";
 import { createClient } from "@/lib/supabase/server";
+import { isViewAsActive } from "@/lib/view-as/actions";
 import type { ProfileRow } from "@/lib/roles";
 
 // Bu layout kullanıcının rolünü/bölgesini her istekte veritabanından taze
@@ -78,12 +80,28 @@ export default async function DashboardLayout({
     );
   }
 
+  const viewAsActive = await isViewAsActive();
+  const { data: sysSettings } = await supabase
+    .from("system_settings")
+    .select("maintenance_mode, maintenance_message")
+    .eq("id", true)
+    .single();
+  const maintenance = sysSettings as { maintenance_mode: boolean; maintenance_message: string | null } | null;
+
   return (
     <div className="grid min-h-screen grid-cols-[252px_1fr] bg-rg-bg">
       <Sidebar profile={typedProfile} />
-      <main className="max-w-[1400px] px-[34px] pb-[60px] pt-[26px]">
-        {children}
-      </main>
+      <div className="flex min-w-0 flex-col">
+        {viewAsActive && <ViewAsBanner name={typedProfile.full_name || typedProfile.email} role={typedProfile.role} />}
+        {maintenance?.maintenance_mode && (
+          <div className="bg-amber-500/10 px-[34px] py-2 text-[12px] font-medium text-amber-600">
+            {maintenance.maintenance_message || "Sistem bakımda — bazı işlemler geçici olarak etkilenebilir."}
+          </div>
+        )}
+        <main className="max-w-[1400px] px-[34px] pb-[60px] pt-[26px]">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

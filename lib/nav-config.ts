@@ -123,6 +123,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: "Ürün Geliştirme", href: "/roadmap", icon: Milestone, phase: "v1" },
       { label: "Kullanıcı & Yetki", href: "/users", icon: ShieldCheck, phase: "beta" },
+      { label: "Sistem Ayarları", href: "/system-settings", icon: Settings, phase: "beta" },
     ],
   },
 ];
