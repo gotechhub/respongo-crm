@@ -92,6 +92,47 @@ export async function isNewsletterAutoSyncEnabled(): Promise<boolean> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Bölüm H: Bildirimler & Takvim — mail bildirim özeti (digest) gönderimi.
+// Brevo'nun transactional email endpoint'i (/smtp/email), bülten listeleriyle
+// AYNI API anahtarını kullanır ama tamamen ayrı bir uçtur — bu yüzden ayrı bir
+// entegrasyon/ayar gerekmez, mevcut marketing_settings.api_key yeniden kullanılıyor
+// (DERS 26: yeni bir credential mekanizması icat edilmedi).
+//
+// ÖNEMLİ DÜRÜSTLÜK NOTU: Bu da resmi Brevo API v3 dokümantasyonuna göre yazıldı,
+// CANLI bir hesaba karşı test edilmedi. Ayrıca gönderen adresin (sender.email)
+// Brevo hesabında DOĞRULANMIŞ bir domain/e-posta olması gerekir — aksi halde
+// Brevo isteği 400 ile reddeder. Kullanıcı kendi Brevo hesabında bir gönderen
+// e-postası doğrulamalı (bkz. V2 Revizeler bölüm H aktivasyon adımları).
+// ---------------------------------------------------------------------------
+export type TransactionalEmailResult = { ok: true } | { ok: false; error: string };
+
+export async function sendTransactionalEmail(params: {
+  toEmail: string;
+  toName: string | null;
+  subject: string;
+  htmlContent: string;
+}): Promise<TransactionalEmailResult> {
+  try {
+    const settings = await getSettings();
+    if (!settings || !settings.api_key) {
+      return { ok: false, error: "Brevo API anahtarı henüz kaydedilmedi." };
+    }
+    await brevoRequest(settings.api_key, "smtp/email", {
+      method: "POST",
+      body: JSON.stringify({
+        sender: { name: "Respongo GO CRM", email: "bildirim@respongo.com" },
+        to: [{ email: params.toEmail, name: params.toName || undefined }],
+        subject: params.subject,
+        htmlContent: params.htmlContent,
+      }),
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Bilinmeyen hata." };
+  }
+}
+
 export type NewsletterSyncResult = { ok: true } | { ok: false; error: string };
 
 // Bir e-posta adresini, bölgesine karşılık gelen Brevo listesine ekler/çıkarır.

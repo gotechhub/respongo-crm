@@ -100,7 +100,7 @@ export const navGroups: NavGroup[] = [
     label: "Operasyon",
     items: [
       { label: "Proje & Görev", href: "/projects", icon: FolderKanban, phase: "beta" },
-      { label: "Takvim / Planner", href: "/planner", icon: CalendarClock, phase: "v1" },
+      { label: "Takvim / Planner", href: "/planner", icon: CalendarClock, phase: "beta" },
     ],
   },
   {

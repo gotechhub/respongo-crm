@@ -2,10 +2,11 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Giriş gerektirmeyen sayfalar: /login, magic link geri dönüş rotası /auth/callback,
-// ve dış sistemlerin (respongo.com web sitesi vb.) paylaşılan bir sırla çağırdığı
-// webhook uç noktaları (/api/webhooks/*) — bunlar Supabase oturumu TAŞIMAZ, kimlik
-// doğrulamayı kendi içlerinde (X-Webhook-Secret) yapar.
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/api/webhooks"];
+// dış sistemlerin (respongo.com web sitesi vb.) paylaşılan bir sırla çağırdığı
+// webhook uç noktaları (/api/webhooks/*), ve Vercel Cron'un günlük olarak tetiklediği
+// zamanlanmış görev uç noktaları (/api/cron/*, bölüm H) — bunların hiçbiri Supabase
+// oturumu TAŞIMAZ, kimlik doğrulamayı kendi içlerinde (paylaşılan sır / CRON_SECRET) yapar.
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/api/webhooks", "/api/cron"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({

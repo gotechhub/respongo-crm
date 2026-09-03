@@ -113,18 +113,20 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
 
       <div className="mt-auto border-t border-white/[.08] pt-3.5">
         <div className="flex items-center gap-2.5 p-1.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-golxp to-golms font-display text-xs font-bold text-white">
-            {initialsOf(displayName)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[12.5px] font-semibold text-white">
-              {displayName}
+          <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-2.5" title="Profilim">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-golxp to-golms font-display text-xs font-bold text-white">
+              {initialsOf(displayName)}
             </div>
-            <div className="truncate text-[10.5px] text-sidebar-fg-faint">
-              {roleLabel}
-              {regionLabel}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12.5px] font-semibold text-white">
+                {displayName}
+              </div>
+              <div className="truncate text-[10.5px] text-sidebar-fg-faint">
+                {roleLabel}
+                {regionLabel}
+              </div>
             </div>
-          </div>
+          </Link>
           <ThemeToggle />
           <button
             onClick={handleSignOut}

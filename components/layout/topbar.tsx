@@ -1,12 +1,45 @@
-import { Search, Bell } from "lucide-react";
+import { Search } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import type { NotificationRow } from "@/app/(dashboard)/notifications/labels";
 
-export function Topbar({
+// V2 Revizeler bölüm H: Bildirimler sistemde "her zaman açık" olacağı için bu
+// bileşen async Server Component'e çevrildi — her sayfa yüklemesinde (30+ yerden
+// aynı şekilde <Topbar title=... /> olarak çağrıldığı için, prop değişikliği
+// gerekmedi) taze bildirim/okunmamış sayısı çekiliyor.
+export async function Topbar({
   title,
   subtitle,
 }: {
   title: string;
   subtitle?: string;
 }) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let notifications: NotificationRow[] = [];
+  let unreadCount = 0;
+
+  if (user) {
+    const [{ data: recent }, { count }] = await Promise.all([
+      supabase
+        .from("notifications")
+        .select("id, type, title, body, link_url, is_read, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(8),
+      supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false),
+    ]);
+    notifications = (recent ?? []) as NotificationRow[];
+    unreadCount = count ?? 0;
+  }
+
   return (
     <div className="mb-6 flex items-center justify-between">
       <div>
@@ -26,9 +59,7 @@ export function Topbar({
             EN
           </span>
         </div>
-        <button className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-rg-line bg-rg-surface text-rg-ink-soft">
-          <Bell className="h-4 w-4" />
-        </button>
+        <NotificationBell initialNotifications={notifications} unreadCount={unreadCount} />
       </div>
     </div>
   );
