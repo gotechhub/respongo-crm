@@ -65,6 +65,12 @@ export function PortalHeader({ companyName }: { companyName: string }) {
         >
           Destek
         </Link>
+        <Link
+          href="/portal/account"
+          className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-semibold text-rg-ink-soft transition-colors hover:bg-rg-surface-alt"
+        >
+          Hesabım
+        </Link>
         <div className="mx-0.5 h-5 w-px bg-rg-line" />
         <ThemeToggle />
         <button

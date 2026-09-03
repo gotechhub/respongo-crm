@@ -114,8 +114,13 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
       <div className="mt-auto border-t border-white/[.08] pt-3.5">
         <div className="flex items-center gap-2.5 p-1.5">
           <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-2.5" title="Profilim">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-golxp to-golms font-display text-xs font-bold text-white">
-              {initialsOf(displayName)}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-golxp to-golms font-display text-xs font-bold text-white">
+              {profile.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" />
+              ) : (
+                initialsOf(displayName)
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[12.5px] font-semibold text-white">
