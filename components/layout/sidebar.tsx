@@ -1,11 +1,12 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { navGroups } from "@/lib/nav-config";
+import { navGroups, resolveActiveHref } from "@/lib/nav-config";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_LABELS_TR, REGION_LABELS_TR, type ProfileRow } from "@/lib/roles";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -31,6 +32,28 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
   const roleLabel = profile.role ? ROLE_LABELS_TR[profile.role] : "Rol atanmadı";
   const regionLabel = profile.region ? ` · ${REGION_LABELS_TR[profile.region]}` : "";
 
+  // Tek bir "en spesifik" aktif href hesaplanır — bkz. lib/nav-config.ts
+  // resolveActiveHref yorumu (önceki "birden fazla öğe aynı anda aktif
+  // görünüyor" hatasının kalıcı düzeltmesi).
+  const activeHref = useMemo(() => resolveActiveHref(pathname), [pathname]);
+
+  // Aktif öğeyi içeren ana kategori varsayılan olarak açık başlar; diğerleri
+  // kapalı — 9 kategori + çok sayıda alt öğe tek ekranda göz yormasın diye.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const group of navGroups) {
+      const hasActive = group.subgroups.some((sg) =>
+        sg.items.some((item) => item.href === activeHref)
+      );
+      initial[group.label] = hasActive || group.label === "Genel";
+    }
+    return initial;
+  });
+
+  function toggleGroup(label: string) {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  }
+
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -39,7 +62,7 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
   }
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[252px] flex-col bg-gradient-to-br from-sidebar-from via-sidebar-via to-sidebar-to px-4 pb-4 pt-6 text-sidebar-fg">
+    <aside className="sticky top-0 flex h-screen w-[264px] flex-col bg-gradient-to-br from-sidebar-from via-sidebar-via to-sidebar-to px-4 pb-4 pt-6 text-sidebar-fg">
       <div className="px-1.5 pb-4">
         <Image
           src="/logos/respongo-white.avif"
@@ -47,9 +70,9 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
           width={288}
           height={110}
           priority
-          className="h-8 w-auto"
+          className="h-12 w-auto"
         />
-        <div className="mt-2 text-[10px] font-semibold uppercase tracking-[1.2px] text-sidebar-fg-faint">
+        <div className="mt-2.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-sidebar-fg-faint">
           CRM · Beta
         </div>
       </div>
@@ -63,52 +86,90 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
         ))}
       </div>
 
-      <nav className="flex-1 overflow-y-auto">
-        {navGroups.map((group) => (
-          <div key={group.label} className="mb-4">
-            <div className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[.9px] text-sidebar-fg-label">
-              {group.label}
-            </div>
-            {group.items.map((item) => {
-              const active = pathname.startsWith(item.href);
-              const Icon = item.icon;
+      <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden pr-0.5">
+        {navGroups.map((group) => {
+          const GroupIcon = group.icon;
+          const isOpen = openGroups[group.label] ?? true;
+          const hasActiveChild = group.subgroups.some((sg) =>
+            sg.items.some((item) => item.href === activeHref)
+          );
 
-              if (item.phase === "v1") {
-                return (
-                  <div
-                    key={item.href}
-                    className="mb-0.5 flex cursor-not-allowed items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13.1px] font-medium text-sidebar-fg-faint/60"
-                  >
-                    <Icon className="h-4 w-4 shrink-0 opacity-60" />
-                    {item.label}
-                    <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold">
-                      V1
-                    </span>
-                  </div>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
+          return (
+            <div key={group.label} className="mb-1">
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.label)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-[9px] px-2 py-2 text-left transition-colors hover:bg-white/[.05]",
+                  hasActiveChild && !isOpen && "bg-white/[.06]"
+                )}
+              >
+                <GroupIcon className="h-4 w-4 shrink-0 text-sidebar-fg-faint" />
+                <span className="flex-1 text-[10.5px] font-bold uppercase tracking-[.9px] text-sidebar-fg-label">
+                  {group.label}
+                </span>
+                <ChevronDown
                   className={cn(
-                    "mb-0.5 flex items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13.1px] font-medium text-sidebar-fg-muted transition-colors hover:bg-white/[.06]",
-                    active && "bg-primary text-white"
+                    "h-3.5 w-3.5 shrink-0 text-sidebar-fg-faint/70 transition-transform",
+                    isOpen && "rotate-180"
                   )}
-                >
-                  <Icon className={cn("h-4 w-4 shrink-0 opacity-80", active && "opacity-100")} />
-                  {item.label}
-                  {item.badge && (
-                    <span className="ml-auto rounded-full bg-white/[.12] px-1.5 py-0.5 text-[10px] font-semibold">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
+                />
+              </button>
+
+              {isOpen && (
+                <div className="mt-0.5 space-y-3 pb-2 pl-1.5 pt-1">
+                  {group.subgroups.map((subgroup, sgIndex) => (
+                    <div key={subgroup.label ?? `sg-${sgIndex}`}>
+                      {subgroup.label && (
+                        <div className="mb-1 px-2.5 text-[9.5px] font-semibold uppercase tracking-[.7px] text-sidebar-fg-faint/70">
+                          {subgroup.label}
+                        </div>
+                      )}
+                      {subgroup.items.map((item) => {
+                        const active = item.href === activeHref;
+                        const Icon = item.icon;
+
+                        if (item.phase === "v1") {
+                          return (
+                            <div
+                              key={item.href}
+                              className="mb-0.5 flex cursor-not-allowed items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13.1px] font-medium text-sidebar-fg-faint/60"
+                            >
+                              <Icon className="h-4 w-4 shrink-0 opacity-60" />
+                              {item.label}
+                              <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold">
+                                V1
+                              </span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={cn(
+                              "mb-0.5 flex items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13.1px] font-medium text-sidebar-fg-muted transition-colors hover:bg-white/[.06]",
+                              active && "bg-primary text-white"
+                            )}
+                          >
+                            <Icon className={cn("h-4 w-4 shrink-0 opacity-80", active && "opacity-100")} />
+                            {item.label}
+                            {item.badge && (
+                              <span className="ml-auto rounded-full bg-white/[.12] px-1.5 py-0.5 text-[10px] font-semibold">
+                                {item.badge}
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="mt-auto border-t border-white/[.08] pt-3.5">

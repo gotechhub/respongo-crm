@@ -100,7 +100,7 @@ export default async function ProjectsPage({
 
   return (
     <>
-      <Topbar title="Proje & Görev" subtitle="Proje, görev ve alt görevleri tek yerden yönet." />
+      <Topbar title="Projeler" subtitle="Tüm projeler ve durumları — görevlerin tek listesi için Görevlerim sayfasına bak." />
 
       <div className="mb-5 grid grid-cols-4 gap-4">
         <StatCard label="Aktif Proje" value={String(activeCount)} />

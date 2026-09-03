@@ -10,9 +10,11 @@ import {
   unassignTaskMember,
   createSubtask,
   toggleSubtask,
+  reassignSubtask,
   type TaskStatus,
 } from "../actions";
 import { TASK_STATUS_LABEL } from "../status-labels";
+import { cn } from "@/lib/utils";
 
 export type TaskRow = {
   id: string;
@@ -303,6 +305,8 @@ export function TaskBoard({
                             subtasks={taskSubtasks}
                             onToggle={handleToggleSubtask}
                             isPending={isPending}
+                            members={members}
+                            memberNames={memberNames}
                           />
                         </div>
                       )}
@@ -324,31 +328,53 @@ function SubtaskList({
   subtasks,
   onToggle,
   isPending,
+  members,
+  memberNames,
 }: {
   taskId: string;
   projectId: string;
   subtasks: SubtaskRow[];
   onToggle: (id: string, isDone: boolean) => void;
   isPending: boolean;
+  members: MemberOption[];
+  memberNames: Record<string, string>;
 }) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
+  const [newAssigneeId, setNewAssigneeId] = useState("");
   const [isAdding, startAdding] = useTransition();
+  const [isReassigning, startReassigning] = useTransition();
   const [localError, setLocalError] = useState("");
 
   function handleAdd(e: FormEvent) {
     e.preventDefault();
     setLocalError("");
     startAdding(async () => {
-      const result = await createSubtask({ taskId, projectId, title, dueDate: null, assigneeId: null });
+      const result = await createSubtask({
+        taskId,
+        projectId,
+        title,
+        dueDate: null,
+        assigneeId: newAssigneeId || null,
+      });
       if (result.ok) {
         setTitle("");
+        setNewAssigneeId("");
         setShowForm(false);
         router.refresh();
       } else {
         setLocalError(result.error);
       }
+    });
+  }
+
+  function handleReassign(subtaskId: string, assigneeId: string) {
+    setLocalError("");
+    startReassigning(async () => {
+      const result = await reassignSubtask(subtaskId, projectId, assigneeId || null);
+      if (result.ok) router.refresh();
+      else setLocalError(result.error);
     });
   }
 
@@ -370,7 +396,24 @@ function SubtaskList({
           >
             {s.is_done ? <CheckSquare className="h-3.5 w-3.5 text-gofactory" /> : <Square className="h-3.5 w-3.5" />}
           </button>
-          <span className={s.is_done ? "text-rg-ink-faint line-through" : ""}>{s.title}</span>
+          <span className={cn("flex-1", s.is_done && "text-rg-ink-faint line-through")}>{s.title}</span>
+          {/* Her alt görev BAĞIMSIZ olarak farklı bir kişiye atanabilir —
+              task_assignees'teki görev-seviyesi (çoklu kişi) atamadan ayrı,
+              tek kişilik bir sorumluluk alanı. */}
+          <select
+            value={s.assignee_id ?? ""}
+            onChange={(e) => handleReassign(s.id, e.target.value)}
+            disabled={isReassigning}
+            title="Alt görevi ata"
+            className="shrink-0 rounded-[6px] border border-rg-line bg-rg-surface px-1.5 py-0.5 text-[10px] text-rg-ink-soft outline-none"
+          >
+            <option value="">Atanmamış</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {memberNames[m.id] ?? m.name}
+              </option>
+            ))}
+          </select>
         </div>
       ))}
       {showForm && (
@@ -381,6 +424,18 @@ function SubtaskList({
             placeholder="Alt görev başlığı"
             className="flex-1 rounded-[6px] border border-rg-line bg-rg-surface px-2 py-1 text-[11px] text-rg-ink outline-none focus:border-primary"
           />
+          <select
+            value={newAssigneeId}
+            onChange={(e) => setNewAssigneeId(e.target.value)}
+            className="rounded-[6px] border border-rg-line bg-rg-surface px-1.5 py-1 text-[10.5px] text-rg-ink-soft outline-none"
+          >
+            <option value="">Atanmamış</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
           <button
             type="submit"
             disabled={isAdding || !title.trim()}

@@ -222,3 +222,29 @@ export async function toggleSubtask(id: string, projectId: string, isDone: boole
   revalidatePath(`/projects/${projectId}`);
   return { ok: true };
 }
+
+// V3 (2026-09-03): `subtasks.assignee_id` kolonu baştan beri vardı ama
+// arayüzde HİÇBİR YERDE kullanılmıyordu — createSubtask her zaman
+// assigneeId: null gönderiyordu, atamayı sonradan değiştirecek bir action da
+// hiç yoktu. Kullanıcının "her alt görev kendi içinde başkasına atanabilmeli"
+// isteği tam olarak bu eksiği işaret ediyor. RLS notu: reassignSubtask,
+// createSubtask ile AYNI yetki kuralına tabi — sadece proje sahibi/founder
+// atamayı değiştirebilir (subtasks_via_task_owner policy'si UPDATE'i de
+// kapsıyor); atanan kişinin kendisi sadece is_done'ı değiştirebiliyor.
+export async function reassignSubtask(id: string, projectId: string, assigneeId: string | null): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("subtasks")
+    .update({ assignee_id: assigneeId }, { count: "exact" })
+    .eq("id", id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu alt görevin atamasını değiştirme yetkin yok." };
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  return { ok: true };
+}

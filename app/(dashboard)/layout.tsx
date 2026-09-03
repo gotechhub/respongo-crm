@@ -89,7 +89,7 @@ export default async function DashboardLayout({
   const maintenance = sysSettings as { maintenance_mode: boolean; maintenance_message: string | null } | null;
 
   return (
-    <div className="grid min-h-screen grid-cols-[252px_1fr] bg-rg-bg">
+    <div className="grid min-h-screen grid-cols-[264px_1fr] bg-rg-bg">
       <Sidebar profile={typedProfile} />
       <div className="flex min-w-0 flex-col">
         {viewAsActive && <ViewAsBanner name={typedProfile.full_name || typedProfile.email} role={typedProfile.role} />}
