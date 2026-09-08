@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Respongo CRM — İlerleme</title>
+<style>
+body{margin:0;background:#f4f6fa;color:#19283b;font:16px/1.6 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:40px 24px}h1{margin:0;font-size:32px}h2{font-size:20px}p{max-width:850px}.muted{color:#526176}.card{background:white;border:1px solid #dce3ed;border-radius:14px;padding:24px;margin-top:20px}table{border-collapse:collapse;width:100%;text-align:left}td,th{padding:12px;border-bottom:1px solid #e4e9f0;vertical-align:top}th{background:#eef2f8}.scroll{overflow:auto}.done{color:#166534}.active{color:#1d4ed8}a{color:#1d4ed8}footer{margin-top:24px;color:#526176}
+</style>
+<main>
+<p class="muted">GO CRM · RADAR · Kaynak durum: 3 Eylül 2026 · Plan güncellemesi: 7 Eylül 2026</p>
+<h1>Çekirdek ve V2 revizeler tamamlandı</h1>
+<p>Kullanıcının paylaştığı Claude Radar kaydı esas alınmıştır. Çekirdek Faz 0–4: <strong>26/26 · %100</strong>. V2 A–J tamamlandı; K sürekli tasarım standardı olarak tamamlandı. Radar kaydında <strong>22 canlı modül ve 0 açık iş</strong> bulunuyor.</p>
+<section class="card"><h2>Tamamlanan V2 kapsamı</h2><p class="done">A Teklif şablonları · B Müşteri portalı · C Satış ekibi · D İş ortakları/komisyon/hedef/toplantı · E Lead havuzu · F Fatura · G Pazarlama/web · H Bildirim/takvim · I Profil · J Sistem Ayarları ve Master Admin View-As · K Menü/IA/UX</p><p>Bu işler yeniden geliştirme kuyruğuna alınmaz. Radar, J için rollback-testli beş senaryo ve başarılı deployment bildiriyor; bunlar bu oturumda tekrarlanmış testler değildir.</p></section>
+<section class="card"><h2>Mevcut bakım işi</h2><p>Yerel migration kaynaklarını mevcut canlı şemayla eşleştirmek. Kodun kullandığı 14 tablo ve 14 RPC adı depodaki migration metninde bulunamadı; ayrıca bir storage bucket referansı var. Bu, canlı modüllerin eksik olduğu anlamına gelmez.</p><p class="done">Bu oturumda yerel bağımlılık kurulumu, TypeScript, ESLint, 28 canlı menü rotası ve Git diff kontrolleri geçti.</p></section>
+<section class="card"><h2>Faz 5 — önerilen yeni iş sırası</h2><div class="scroll"><table><thead><tr><th>Sıra</th><th>İş paketi</th><th>Durum</th></tr></thead><tbody>
+<tr><td>1</td><td>Apollo.io lead alımı ve zenginleştirme</td><td>Yerelde uygulandı — canlı hesap/şema doğrulaması bekliyor</td></tr>
+<tr><td>2</td><td>n8n otomasyonları</td><td>Planlanan — henüz kurulmadı</td></tr>
+<tr><td>3</td><td>Firecrawl firma/lead bilgisi toplama</td><td>Planlanan — henüz kurulmadı</td></tr>
+<tr><td>Takip</td><td>Paraşüt canlı hesap testi, GA4/Ads OAuth</td><td>V2 sonrası fırsatlar</td></tr>
+<tr><td>Vizyon</td><td>Office 365, AI ve ileri reklam yönetimi</td><td>Ayrı kapsamlandırılacak eski talepler</td></tr>
+</tbody></table></div><p>Brevo, Paraşüt TR ve JivoChat Radar'a göre canlıdır. Faz 5 işleri çekirdek tamamlanma yüzdesine dahil değildir.</p></section>
+<section class="card"><h2>Apollo paketi</h2><p>Müşteri Adayları ekranında yöneticiye özel arama ve seçerek içe alma akışı yerelde hazır. Arama kredi kullanmaz; zenginleştirme açık onay ister. Doğrulanmış iş e-postası/firma adı olmayan kişiler eklenmez, mevcut kayıtlar güncellenmez. 18 otomatik test, TypeScript ve ESLint geçti. Gerçek Apollo anahtarı, canlı şema/RLS ve üretim build kontrolü bekliyor.</p><a href="APOLLO-ENTEGRASYONU.md">Apollo kurulum ve doğrulama notları</a></section>
+<section class="card"><h2>İlerleme kuralı</h2><p>Tek aktif paket: mevcut yapıyı incele → tasarla → test verisiyle geliştir → doğrula → raporu güncelle. Yeni talepler kuyruğa eklenir. Tamamlanan modüller yalnız somut hata veya yeni gereksinimle yeniden açılır.</p><a href="CRM-DEVAM-PLANI.md">Ayrıntılı plan ve teknik kontrol kayıtları</a></section>
+<footer>Bu yerel rapor kullanıcı tarafından sağlanan Radar içeriğiyle uzlaştırıldı. Bu güncellemede canlı veritabanı değişikliği veya deployment yapılmadı.</footer>
+</main></html>

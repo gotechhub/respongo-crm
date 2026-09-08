@@ -179,7 +179,7 @@ export const navGroups: NavGroup[] = [
         label: "Kullanıcılar",
         items: [
           { label: "Kullanıcı & Yetki", href: "/users", icon: ShieldCheck, phase: "beta" },
-          { label: "Test Hesapları", href: "/test-accounts", icon: UserCog, phase: "beta" },
+          { label: "Test Hesapları", href: "/test-accounts", icon: UserCog, phase: "v1" },
         ],
       },
       {

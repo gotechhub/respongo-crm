@@ -7,6 +7,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { RegionTabs } from "@/components/ui/region-tabs";
 import { LeadsTable, type LeadRow } from "./leads-table";
 import { LeadsImportPanel } from "./import-panel";
+import { ApolloPanel } from "./apollo-panel";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -82,6 +83,7 @@ export default async function LeadsPage({
         )}
       </div>
       <LeadsImportPanel isFounder={isFounder} isManager={isManager} currentRegion={currentRegion} />
+      {isManager && <ApolloPanel configured={Boolean(process.env.APOLLO_API_KEY?.trim())} isFounder={isFounder} currentRegion={currentRegion} />}
       <LeadsTable rows={rows} ownerNames={ownerNames} pagination={{ totalCount: count ?? 0, page, pageSize }} />
     </>
   );
