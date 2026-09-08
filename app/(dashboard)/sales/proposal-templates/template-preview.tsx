@@ -14,13 +14,13 @@ function title(section: V2Section | undefined, language: "tr" | "en", fallback: 
 }
 function scope(section: V2Section | undefined, language: "tr" | "en", field: "included" | "excluded", fallback: string[]) {
   const value = section?.content?.[`${field}_${language}`];
-  return Array.isArray(value) && value.filter((item): item is string => typeof item === "string" && item.trim()).length > 0 ? value.filter((item): item is string => typeof item === "string" && item.trim()) : fallback;
+  return Array.isArray(value) && value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).length > 0 ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : fallback;
 }
 
 export function TemplatePreview({ template }: { template: V2Template }) {
   const product = studioProduct(template.product); const language = template.language; const tr = language === "tr";
   const find = (sectionType: string) => template.sections.find((section) => section.section_type === sectionType);
-  const rows = previewLines(template.product); const currencies = [...new Set(rows.map((row) => row.currency))];
+  const rows = previewLines(template.product); const currencies = Array.from(new Set(rows.map((row) => row.currency)));
   const included = scope(find("scope"), language, "included", tr ? ["Kuruma özel keşif ve çözüm tasarımı", "Yönetici başlangıç eğitimi", "Canlıya geçiş ve başarı takibi"] : ["Discovery and solution design", "Administrator onboarding", "Go-live and success follow-up"]);
   const excluded = scope(find("scope"), language, "excluded", tr ? ["Kapsam dışı özel geliştirmeler", "Üçüncü taraf lisans ve altyapı bedelleri"] : ["Out-of-scope custom development", "Third-party license and infrastructure fees"]);
   return <section className="overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
