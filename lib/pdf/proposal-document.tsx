@@ -119,6 +119,7 @@ export function ProposalPdfDocument({
     region: string | null;
     created_at: string;
     sent_at: string | null;
+    language?: "tr" | "en" | null;
   };
   items: ProposalPdfItem[];
   target: ProposalPdfTarget;
@@ -128,7 +129,10 @@ export function ProposalPdfDocument({
   const contactName = target?.contact_name ?? target?.primary_contact_name ?? null;
   const contactEmail = target?.contact_email ?? target?.primary_contact_email ?? null;
 
-  const lang: "tr" | "en" = proposal.region === "global" ? "en" : "tr";
+  // Şablon dili, bölgeden bağımsız bir teklif kararıdır. Örneğin Türkiye'deki
+  // uluslararası müşteriye İngilizce teklif verilebilir; bu durumda bölgeye
+  // bakmak yanlış belge dilini üretirdi.
+  const lang: "tr" | "en" = proposal.language === "en" ? "en" : "tr";
   const legalRegion: "tr" | "us" = proposal.region === "global" ? "us" : "tr";
   const byType = (type: string) => sections?.find((s) => s.section_type === type) ?? null;
   const coverSection = byType("cover");

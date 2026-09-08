@@ -1,316 +1,48 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Copy, Loader2 } from "lucide-react";
-import { PRODUCT_LOGO } from "@/lib/product-logos";
+import { Copy, Eye, FileText, GripVertical, LayoutTemplate, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
-import { cloneProposalTemplate, updateTemplateSection, type SectionInput, type TemplateProduct } from "./actions";
+import { PRODUCT_LOGO } from "@/lib/product-logos";
+import { cloneProposalTemplate, createCustomTemplateSection, deleteCustomTemplateSection, updateTemplateSection, type SectionInput, type TemplateProduct } from "./actions";
 
-const PRODUCT_LABEL: Record<string, string> = {
-  golms: "GOLMS",
-  golxp: "GOLXP",
-  gocatalog: "GOCATALOG",
-  gofactory: "GOFACTORY",
-  gotools: "GOTOOLS",
-};
+const PRODUCT_LABEL: Record<string, string> = { golms: "GOLMS", golxp: "GOLXP", gocatalog: "GOCATALOG", gofactory: "GOFACTORY", gotools: "GOTOOLS", genel: "Respongo" };
+const SECTION_LABEL: Record<string, string> = { cover: "Kapak", customer_info: "Müşteri bilgisi", scope: "Kapsam", product_info: "Ürün detayları", bank_info: "Banka bilgileri", signature: "Onay ve imza", custom: "Özel bölüm" };
+const inputClass = "w-full rounded-lg border border-rg-line bg-rg-surface px-3 py-2 text-[13px] text-rg-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
+const labelClass = "text-[10px] font-bold uppercase tracking-[.08em] text-rg-ink-faint";
 
-const PRODUCT_ORDER = ["golms", "golxp", "gocatalog", "gofactory", "gotools", "genel"];
+export type V2Section = { id: string; section_type: string; legal_region: "tr" | "us" | null; sort_order: number; title_tr: string | null; title_en: string | null; body_tr: string | null; body_en: string | null; content: Record<string, unknown> };
+export type V2Template = { id: string; name: string; product: TemplateProduct; language: "tr" | "en"; isActive: boolean; isDefaultForProduct: boolean; clonedFromId: string | null; sections: V2Section[] };
 
-const SECTION_LABEL: Record<string, string> = {
-  cover: "Kapak",
-  customer_info: "Müşteri Bilgisi",
-  scope: "Kapsam (Dahil / Hariç)",
-  product_info: "Ürün Bilgisi",
-  bank_info: "Banka Bilgileri",
-  signature: "Onay & İmza",
-  custom: "Özel Bölüm",
-};
+function label(section: V2Section) { if (section.section_type === "legal_terms") return section.legal_region === "us" ? "Hukuki şartlar · US" : "Hukuki şartlar · TR"; return SECTION_LABEL[section.section_type] ?? section.section_type; }
+function lines(value: unknown) { return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : []; }
+function complete(section: V2Section, language: "tr" | "en") { if (section.section_type === "scope") return lines(section.content[`included_${language}`]).length > 0; if (section.section_type === "bank_info") return Boolean(section.content.bank_name || section.content.iban); return Boolean(language === "tr" ? section.title_tr || section.body_tr : section.title_en || section.body_en); }
 
-const inputClass =
-  "rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.5px] text-rg-ink outline-none focus:border-primary";
-const labelClass = "text-[10.5px] font-semibold uppercase tracking-[.3px] text-rg-ink-faint";
-
-export type V2Section = {
-  id: string;
-  section_type: string;
-  legal_region: "tr" | "us" | null;
-  sort_order: number;
-  title_tr: string | null;
-  title_en: string | null;
-  body_tr: string | null;
-  body_en: string | null;
-  content: Record<string, unknown>;
-};
-
-export type V2Template = {
-  id: string;
-  name: string;
-  product: TemplateProduct;
-  isActive: boolean;
-  isDefaultForProduct: boolean;
-  clonedFromId: string | null;
-  sections: V2Section[];
-};
-
-function sectionLabel(section: V2Section): string {
-  if (section.section_type === "legal_terms") {
-    return section.legal_region === "us" ? "Hukuki Şartlar (US)" : "Hukuki Şartlar (TR)";
-  }
-  return SECTION_LABEL[section.section_type] ?? section.section_type;
+function ListField({ title, value, onChange, disabled }: { title: string; value: string[]; onChange: (value: string[]) => void; disabled: boolean }) {
+  const update = (index: number, next: string) => onChange(value.map((item, i) => i === index ? next : item));
+  return <div className="rounded-xl border border-rg-line bg-rg-surface-alt p-3"><div className="mb-2 flex items-center justify-between"><span className={labelClass}>{title}</span><button type="button" disabled={disabled} onClick={() => onChange([...value, ""])} className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary disabled:opacity-40"><Plus className="h-3.5 w-3.5" />Madde ekle</button></div><div className="space-y-1.5">{value.map((item, i) => <div key={`${i}-${item}`} className="flex gap-1.5"><input disabled={disabled} value={item} onChange={(e) => update(i, e.target.value)} placeholder="Kapsam maddesi" className={inputClass} /><button type="button" disabled={disabled} onClick={() => onChange(value.filter((_, index) => index !== i))} aria-label="Maddeyi sil" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-rg-ink-faint hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /></button></div>)}</div>{value.length === 0 && <p className="py-2 text-[12px] text-rg-ink-faint">Henüz madde eklenmedi.</p>}</div>;
 }
 
-function toLines(value: unknown): string {
-  return Array.isArray(value) ? value.join("\n") : "";
-}
-function fromLines(value: string): string[] {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function SectionEditor({ section, readOnly }: { section: V2Section; readOnly: boolean }) {
-  const [titleTr, setTitleTr] = useState(section.title_tr ?? "");
-  const [titleEn, setTitleEn] = useState(section.title_en ?? "");
-  const [bodyTr, setBodyTr] = useState(section.body_tr ?? "");
-  const [bodyEn, setBodyEn] = useState(section.body_en ?? "");
-  const [bankName, setBankName] = useState(String(section.content.bank_name ?? ""));
-  const [accountName, setAccountName] = useState(String(section.content.account_name ?? ""));
-  const [iban, setIban] = useState(String(section.content.iban ?? ""));
-  const [swift, setSwift] = useState(String(section.content.swift ?? ""));
-  const [currency, setCurrency] = useState(String(section.content.currency ?? ""));
-  const [includedTr, setIncludedTr] = useState(toLines(section.content.included_tr));
-  const [includedEn, setIncludedEn] = useState(toLines(section.content.included_en));
-  const [excludedTr, setExcludedTr] = useState(toLines(section.content.excluded_tr));
-  const [excludedEn, setExcludedEn] = useState(toLines(section.content.excluded_en));
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
-  const router = useRouter();
-
-  function handleSave() {
-    setError("");
-    setSaved(false);
-    let content: Record<string, unknown> = section.content;
-    if (section.section_type === "bank_info") {
-      content = { bank_name: bankName, account_name: accountName, iban, swift, currency };
-    } else if (section.section_type === "scope") {
-      content = {
-        included_tr: fromLines(includedTr),
-        included_en: fromLines(includedEn),
-        excluded_tr: fromLines(excludedTr),
-        excluded_en: fromLines(excludedEn),
-      };
-    }
-    const input: SectionInput = { titleTr, titleEn, bodyTr, bodyEn, content };
-    startTransition(async () => {
-      const result = await updateTemplateSection(section.id, input);
-      if (result.ok) {
-        setSaved(true);
-        router.refresh();
-      } else {
-        setError(result.error);
-      }
-    });
-  }
-
-  return (
-    <div className="flex flex-col gap-2.5 rounded-[10px] border border-rg-line bg-rg-surface-alt p-3.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[11.5px] font-bold text-rg-ink">{sectionLabel(section)}</span>
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-[7px] bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:brightness-[1.08] disabled:opacity-50"
-          >
-            {isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-            Kaydet
-          </button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label className={labelClass}>Başlık (TR)</label>
-          <input disabled={readOnly} value={titleTr} onChange={(e) => setTitleTr(e.target.value)} className={`${inputClass} disabled:opacity-70`} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className={labelClass}>Title (EN)</label>
-          <input disabled={readOnly} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className={`${inputClass} disabled:opacity-70`} />
-        </div>
-      </div>
-
-      {section.section_type === "scope" ? (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Dahil olanlar (TR, satır satır)</label>
-            <textarea disabled={readOnly} rows={4} value={includedTr} onChange={(e) => setIncludedTr(e.target.value)} className={`${inputClass} resize-y disabled:opacity-70`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Included (EN, one per line)</label>
-            <textarea disabled={readOnly} rows={4} value={includedEn} onChange={(e) => setIncludedEn(e.target.value)} className={`${inputClass} resize-y disabled:opacity-70`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Dahil olmayanlar (TR, satır satır)</label>
-            <textarea disabled={readOnly} rows={4} value={excludedTr} onChange={(e) => setExcludedTr(e.target.value)} className={`${inputClass} resize-y disabled:opacity-70`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Excluded (EN, one per line)</label>
-            <textarea disabled={readOnly} rows={4} value={excludedEn} onChange={(e) => setExcludedEn(e.target.value)} className={`${inputClass} resize-y disabled:opacity-70`} />
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Metin (TR)</label>
-            <textarea disabled={readOnly} rows={4} value={bodyTr} onChange={(e) => setBodyTr(e.target.value)} className={`${inputClass} resize-y disabled:opacity-70`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Text (EN)</label>
-            <textarea disabled={readOnly} rows={4} value={bodyEn} onChange={(e) => setBodyEn(e.target.value)} className={`${inputClass} resize-y disabled:opacity-70`} />
-          </div>
-        </div>
-      )}
-
-      {section.section_type === "bank_info" && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Banka</label>
-            <input disabled={readOnly} value={bankName} onChange={(e) => setBankName(e.target.value)} className={`${inputClass} disabled:opacity-70`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Hesap Adı</label>
-            <input disabled={readOnly} value={accountName} onChange={(e) => setAccountName(e.target.value)} className={`${inputClass} disabled:opacity-70`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>IBAN</label>
-            <input disabled={readOnly} value={iban} onChange={(e) => setIban(e.target.value)} className={`${inputClass} disabled:opacity-70`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>SWIFT</label>
-            <input disabled={readOnly} value={swift} onChange={(e) => setSwift(e.target.value)} className={`${inputClass} disabled:opacity-70`} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass}>Para Birimi</label>
-            <input disabled={readOnly} value={currency} onChange={(e) => setCurrency(e.target.value)} className={`${inputClass} disabled:opacity-70`} />
-          </div>
-        </div>
-      )}
-
-      {error && <span className="text-[11.5px] text-destructive">{error}</span>}
-      {saved && !error && <span className="text-[11px] text-rg-ink-faint">Kaydedildi.</span>}
-    </div>
-  );
+function SectionWorkspace({ section, language, isFounder, onDeleted }: { section: V2Section; language: "tr" | "en"; isFounder: boolean; onDeleted: () => void }) {
+  const localized = language === "tr";
+  const [title, setTitle] = useState(localized ? section.title_tr ?? "" : section.title_en ?? ""); const [body, setBody] = useState(localized ? section.body_tr ?? "" : section.body_en ?? ""); const [included, setIncluded] = useState(lines(section.content[`included_${language}`])); const [excluded, setExcluded] = useState(lines(section.content[`excluded_${language}`])); const [bank, setBank] = useState({ bank_name: String(section.content.bank_name ?? ""), account_name: String(section.content.account_name ?? ""), iban: String(section.content.iban ?? ""), swift: String(section.content.swift ?? "") }); const [pending, startTransition] = useTransition(); const [message, setMessage] = useState(""); const router = useRouter();
+  useEffect(() => { setTitle(localized ? section.title_tr ?? "" : section.title_en ?? ""); setBody(localized ? section.body_tr ?? "" : section.body_en ?? ""); setIncluded(lines(section.content[`included_${language}`])); setExcluded(lines(section.content[`excluded_${language}`])); }, [section, language, localized]);
+  const content = useMemo(() => section.section_type === "scope" ? { ...section.content, [`included_${language}`]: included.map(x => x.trim()).filter(Boolean), [`excluded_${language}`]: excluded.map(x => x.trim()).filter(Boolean) } : section.section_type === "bank_info" ? { ...section.content, ...bank } : section.content, [section, language, included, excluded, bank]);
+  function save() { setMessage(""); const input: SectionInput = { titleTr: localized ? title : section.title_tr ?? "", titleEn: localized ? section.title_en ?? "" : title, bodyTr: localized ? body : section.body_tr ?? "", bodyEn: localized ? section.body_en ?? "" : body, content }; startTransition(async () => { const result = await updateTemplateSection(section.id, input); setMessage(result.ok ? "Kaydedildi" : result.error); if (result.ok) router.refresh(); }); }
+  function remove() { startTransition(async () => { const result = await deleteCustomTemplateSection(section.id); if (result.ok) { onDeleted(); router.refresh(); } else setMessage(result.error); }); }
+  const legal = section.section_type === "legal_terms";
+  return <section className="flex min-w-0 flex-col rounded-2xl border border-rg-line bg-rg-surface shadow-rg"><header className="flex items-start justify-between gap-4 border-b border-rg-line px-5 py-4"><div><div className="flex items-center gap-2"><h3 className="font-display text-[16px] font-bold text-rg-ink">{label(section)}</h3><span className="rounded-full bg-rg-surface-alt px-2 py-0.5 text-[10px] font-bold text-rg-ink-faint">{language.toUpperCase()}</span></div><p className="mt-1 text-[11.5px] text-rg-ink-faint">Müşterinin belge içinde göreceği içeriği düzenleyin.</p></div>{isFounder && <div className="flex gap-2">{section.section_type === "custom" && <button type="button" onClick={remove} disabled={pending} className="grid h-9 w-9 place-items-center rounded-lg border border-rg-line text-rg-ink-faint hover:border-destructive hover:text-destructive" title="Özel bölümü sil"><Trash2 className="h-4 w-4" /></button>}<button type="button" onClick={save} disabled={pending} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[12px] font-bold text-white disabled:opacity-50">{pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Kaydet</button></div>}</header><div className="space-y-4 p-5">{legal && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-900">Bu metin hukuki inceleme gerektirir. Onaylanmış şartları buraya ekleyin.</div>}{section.section_type !== "scope" && section.section_type !== "bank_info" && <><div><label className={labelClass}>Bölüm başlığı</label><input disabled={!isFounder} value={title} onChange={e => setTitle(e.target.value)} className={`${inputClass} mt-1`} /></div><div><label className={labelClass}>Belge metni</label><textarea disabled={!isFounder} rows={legal ? 13 : 9} value={body} onChange={e => setBody(e.target.value)} placeholder="Bu bölümün müşteri tarafından görülecek metni" className={`${inputClass} mt-1 resize-y leading-6`} /></div></>}{section.section_type === "scope" && <div className="grid gap-3 xl:grid-cols-2"><ListField title="Dahil olanlar" value={included} onChange={setIncluded} disabled={!isFounder} /><ListField title="Dahil olmayanlar" value={excluded} onChange={setExcluded} disabled={!isFounder} /></div>}{section.section_type === "bank_info" && <div className="grid gap-3 sm:grid-cols-2"><div><label className={labelClass}>Banka</label><input disabled={!isFounder} value={bank.bank_name} onChange={e => setBank({ ...bank, bank_name: e.target.value })} className={`${inputClass} mt-1`} /></div><div><label className={labelClass}>Hesap adı</label><input disabled={!isFounder} value={bank.account_name} onChange={e => setBank({ ...bank, account_name: e.target.value })} className={`${inputClass} mt-1`} /></div><div><label className={labelClass}>IBAN</label><input disabled={!isFounder} value={bank.iban} onChange={e => setBank({ ...bank, iban: e.target.value })} className={`${inputClass} mt-1`} /></div><div><label className={labelClass}>SWIFT / BIC</label><input disabled={!isFounder} value={bank.swift} onChange={e => setBank({ ...bank, swift: e.target.value })} className={`${inputClass} mt-1`} /></div></div>}{message && <p className={message === "Kaydedildi" ? "text-[12px] text-gofactory" : "text-[12px] text-destructive"}>{message}</p>}</div></section>;
 }
 
-function V2TemplateCard({ template, isFounder }: { template: V2Template; isFounder: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState("");
-  const router = useRouter();
-
-  function handleClone() {
-    setError("");
-    startTransition(async () => {
-      const result = await cloneProposalTemplate(template.id);
-      if (result.ok) {
-        setOpen(true);
-        router.refresh();
-      } else {
-        setError(result.error);
-      }
-    });
-  }
-
-  return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
-      <div className="flex items-center justify-between gap-2 border-b border-rg-line bg-rg-surface-alt px-4 py-3">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="flex flex-1 items-center gap-2 text-left"
-        >
-          <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-rg-ink-faint transition-transform ${open ? "rotate-180" : ""}`} />
-          <span className="font-display text-[12.8px] font-bold text-rg-ink">{template.name}</span>
-          {template.isDefaultForProduct && (
-            <span className="inline-flex items-center rounded-full bg-golms-tint px-2 py-0.5 text-[10px] font-bold uppercase text-golms">
-              Varsayılan
-            </span>
-          )}
-          {template.clonedFromId && (
-            <span className="inline-flex items-center rounded-full bg-rg-surface-alt px-2 py-0.5 text-[10px] font-bold text-rg-ink-faint">
-              Kopya
-            </span>
-          )}
-          <span className="text-[11px] text-rg-ink-faint">{template.sections.length} bölüm</span>
-        </button>
-        {isFounder && (
-          <button
-            type="button"
-            onClick={handleClone}
-            disabled={isPending}
-            title="Bu şablonu klonla"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-rg-line bg-rg-surface px-3 py-1.5 text-[11.5px] font-semibold text-rg-ink-soft transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
-          >
-            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
-            Kopyala
-          </button>
-        )}
-      </div>
-
-      {error && <div className="px-4 pt-2 text-[11.5px] text-destructive">{error}</div>}
-
-      {open && (
-        <div className="flex flex-col gap-3 px-4 py-4">
-          {template.sections.map((section) => (
-            <SectionEditor key={section.id} section={section} readOnly={!isFounder} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+function CustomerPreview({ template, section }: { template: V2Template; section: V2Section }) { const lang = template.language; const title = lang === "tr" ? section.title_tr : section.title_en; const body = lang === "tr" ? section.body_tr : section.body_en; return <aside className="rounded-2xl border border-rg-line bg-rg-surface p-4"><div className="mb-3 flex items-center gap-2 text-[11px] font-bold text-rg-ink-soft"><Eye className="h-3.5 w-3.5" />MÜŞTERİ ÖNİZLEMESİ</div><div className="min-h-[360px] rounded-xl bg-slate-950 p-4 text-white"><div className="border-b border-white/15 pb-4"><span className="text-[10px] font-bold tracking-[.16em] text-white/55">RESPONGO · PROPOSAL</span><h4 className="mt-4 text-lg font-semibold">{template.name}</h4></div><div className="mt-6"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-white/45">{label(section)}</p><h5 className="mt-2 text-[15px] font-semibold">{title || "Bölüm başlığı"}</h5>{section.section_type === "scope" ? <ul className="mt-3 space-y-2 text-[11px] text-white/75">{lines(section.content[`included_${lang}`]).slice(0, 4).map(item => <li key={item}>• {item}</li>)}</ul> : <p className="mt-3 whitespace-pre-wrap text-[11px] leading-5 text-white/75">{body || "Düzenleyicide yazdığınız metin burada görünecek."}</p>}</div></div></aside>; }
 
 export function V2TemplatesPanel({ templates, isFounder }: { templates: V2Template[]; isFounder: boolean }) {
-  const grouped: Record<string, V2Template[]> = {};
-  templates.forEach((t) => {
-    const key = t.product ?? "genel";
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(t);
-  });
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-[14.5px] font-bold text-rg-ink">Teklif Şablonları 2.0</h2>
-        {!isFounder && (
-          <span className="text-[11px] text-rg-ink-faint">Düzenleme yetkisi sadece Süper Admin&apos;de.</span>
-        )}
-      </div>
-
-      {templates.length === 0 && (
-        <div className="rounded-2xl border-[1.5px] border-dashed border-rg-line p-10 text-center text-[11.5px] text-rg-ink-faint">
-          Henüz bölüm bazlı şablon yok.
-        </div>
-      )}
-
-      {PRODUCT_ORDER.filter((key) => grouped[key]?.length).map((key) => (
-        <div key={key} className="flex flex-col gap-3">
-          {key !== "genel" && PRODUCT_LOGO[key] ? (
-            <Logo product={key as keyof typeof PRODUCT_LOGO} alt={PRODUCT_LABEL[key]} className="h-5 w-auto" />
-          ) : (
-            <span className="text-[12px] font-bold text-rg-ink-soft">Genel Ekosistem</span>
-          )}
-          <div className="flex flex-col gap-3">
-            {grouped[key].map((t) => (
-              <V2TemplateCard key={t.id} template={t} isFounder={isFounder} />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  const [selectedId, setSelectedId] = useState(templates[0]?.id ?? ""); const selected = templates.find(t => t.id === selectedId) ?? templates[0]; const [sectionId, setSectionId] = useState(selected?.sections[0]?.id ?? ""); const [customTitle, setCustomTitle] = useState(""); const [pending, startTransition] = useTransition(); const [message, setMessage] = useState(""); const router = useRouter();
+  useEffect(() => { if (selected && !selected.sections.some(s => s.id === sectionId)) setSectionId(selected.sections[0]?.id ?? ""); }, [selected, sectionId]);
+  if (!selected) return <div className="rounded-2xl border border-dashed border-rg-line p-10 text-center text-[12px] text-rg-ink-faint">Henüz bölüm bazlı şablon yok. Başlangıç kütüphanesini oluşturduğunuzda burada düzenleyebilirsiniz.</div>;
+  const section = selected.sections.find(s => s.id === sectionId) ?? selected.sections[0];
+  function addSection() { setMessage(""); startTransition(async () => { const result = await createCustomTemplateSection(selected.id, customTitle, selected.language); if (result.ok) { setCustomTitle(""); setMessage("Özel bölüm eklendi."); router.refresh(); } else setMessage(result.error); }); }
+  function clone() { setMessage(""); startTransition(async () => { const result = await cloneProposalTemplate(selected.id); setMessage(result.ok ? "Şablon kopyalandı." : result.error); if (result.ok) router.refresh(); }); }
+  return <div className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-display text-[16px] font-bold text-rg-ink">Belge düzenleyici</h2><p className="mt-1 text-[12px] text-rg-ink-faint">Şablonu, belge bölümlerini ve müşteri görünümünü tek ekranda yönetin.</p></div>{isFounder ? <button type="button" disabled={pending} onClick={clone} className="inline-flex items-center gap-1.5 rounded-lg border border-rg-line bg-rg-surface px-3 py-2 text-[12px] font-semibold text-rg-ink"><Copy className="h-3.5 w-3.5" />Şablonu kopyala</button> : <span className="text-[12px] text-rg-ink-faint">Düzenleme yetkisi Süper Admin&apos;dedir.</span>}</div>{message && <p className="text-[12px] text-rg-ink-soft">{message}</p>}<div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_260px]"><aside className="rounded-2xl border border-rg-line bg-rg-surface p-2"><p className="px-2 pb-2 pt-1 text-[10px] font-bold tracking-[.08em] text-rg-ink-faint">ŞABLONLAR</p><div className="space-y-1">{templates.map(t => <button type="button" key={t.id} onClick={() => { setSelectedId(t.id); setSectionId(t.sections[0]?.id ?? ""); }} className={`w-full rounded-xl p-2.5 text-left ${t.id === selected.id ? "bg-primary text-white" : "hover:bg-rg-surface-alt"}`}><div className="flex items-center gap-2">{t.product && PRODUCT_LOGO[t.product] ? <Logo product={t.product} alt={PRODUCT_LABEL[t.product]} className="h-4 w-14 object-contain object-left" /> : <LayoutTemplate className="h-4 w-4" />}<span className="ml-auto text-[10px] font-bold opacity-70">{t.language.toUpperCase()}</span></div><p className="mt-2 text-[11.5px] font-semibold leading-4">{t.name}</p><p className="mt-1 text-[10px] opacity-65">{t.sections.length} bölüm</p></button>)}</div></aside><div className="min-w-0 space-y-3"><div className="flex gap-2 overflow-x-auto rounded-2xl border border-rg-line bg-rg-surface p-2">{selected.sections.map(s => <button key={s.id} type="button" onClick={() => setSectionId(s.id)} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-semibold ${s.id === section.id ? "bg-rg-ink text-white" : "text-rg-ink-soft hover:bg-rg-surface-alt"}`}><GripVertical className="h-3 w-3 opacity-40" /><span className={`h-1.5 w-1.5 rounded-full ${complete(s, selected.language) ? "bg-gofactory" : "bg-amber-400"}`} />{label(s)}</button>)}</div>{section && <SectionWorkspace key={`${section.id}-${selected.language}`} section={section} language={selected.language} isFounder={isFounder} onDeleted={() => setSectionId(selected.sections.find(s => s.id !== section.id)?.id ?? "")} />}{isFounder && <div className="flex gap-2 rounded-xl border border-dashed border-rg-line bg-rg-surface-alt p-3"><FileText className="mt-2 h-4 w-4 shrink-0 text-rg-ink-faint" /><input value={customTitle} onChange={e => setCustomTitle(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addSection(); }} placeholder="Özel bölüm başlığı" className={inputClass} /><button type="button" disabled={pending || !customTitle.trim()} onClick={addSection} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-rg-ink px-3 text-[12px] font-bold text-white disabled:opacity-40"><Plus className="h-3.5 w-3.5" />Ekle</button></div>}</div>{section && <CustomerPreview template={selected} section={section} />}</div></div>;
 }

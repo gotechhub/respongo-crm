@@ -28,14 +28,14 @@ export function Logo({
         alt={alt ?? product}
         width={pair.light.width}
         height={pair.light.height}
-        className={`${className ?? ""} dark:hidden`}
+        className={`max-w-full shrink-0 object-contain ${className ?? ""} dark:hidden`}
       />
       <Image
         src={pair.dark.src}
         alt={alt ?? product}
         width={pair.dark.width}
         height={pair.dark.height}
-        className={`${className ?? ""} hidden dark:block`}
+        className={`max-w-full shrink-0 object-contain ${className ?? ""} hidden dark:block`}
       />
     </>
   );
