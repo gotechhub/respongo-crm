@@ -10,11 +10,15 @@ import {
   FolderKanban,
   ShieldCheck,
   Users,
+  Receipt,
+  KeyRound,
+  LifeBuoy,
 } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { createClient } from "@/lib/supabase/server";
 import { REGION_LABELS_TR, type Region, type UserRole } from "@/lib/roles";
+import { PRODUCT_LABEL, PRODUCT_KEYS } from "@/lib/product-labels";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,6 +64,23 @@ function fmtDate(iso: string) {
 
 function countSince(rows: { created_at: string }[], iso: string) {
   return rows.filter((r) => r.created_at >= iso).length;
+}
+
+function fmtMoney(n: number, currency: string) {
+  return `${n.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} ${currency}`;
+}
+
+function sumByCurrency(rows: { amount: number; currency: string }[]) {
+  const map: Record<string, number> = {};
+  rows.forEach((r) => {
+    map[r.currency] = (map[r.currency] ?? 0) + Number(r.amount);
+  });
+  const entries = Object.entries(map);
+  return entries.length ? entries.map(([c, v]) => fmtMoney(v, c)).join(" + ") : "—";
+}
+
+function daysUntil(endDate: string, todayIso: string) {
+  return Math.round((new Date(endDate).getTime() - new Date(todayIso).getTime()) / 86400000);
 }
 
 type LeadRow = {
@@ -137,6 +158,16 @@ export default async function DashboardPage() {
   }
   const quickLinks = MODULE_LINKS.filter((m) => visibleModuleKeys.has(m.key));
 
+  // founder yukarıda visibleModuleKeys'i MODULE_LINKS'ten (sadece 9 hızlı-erişim
+  // anahtarı) türetiyor — finance/licenses/support gibi rol_permissions'da
+  // olan ama MODULE_LINKS'te olmayan anahtarları KAPSAMIYOR. Bu yüzden bu üç
+  // widget'ın görünürlüğü founder için ayrıca true kabul edilir (founder zaten
+  // her modülü görür — bkz. DERS: has_module_access ve rol_permissions bulk
+  // insert'i de founder'a zaten tam erişim veriyor).
+  const canViewFinance = isFounder || visibleModuleKeys.has("finance");
+  const canViewLicenses = isFounder || visibleModuleKeys.has("licenses");
+  const canViewSupport = isFounder || visibleModuleKeys.has("support");
+
   if (!hasSalesVisibility) {
     // freelancer / project_member / customer — satış verisine erişimi olmayan roller.
     return (
@@ -181,17 +212,38 @@ export default async function DashboardPage() {
     return q;
   }
 
-  const [companiesRes, contactsRes, poolRes, leadsRes, customersRes] = await Promise.all([
-    applyRegion(supabase.from("companies").select("id, name, region, created_at")).limit(1000),
-    supabase.from("contacts").select("id, first_name, last_name, created_at").limit(1000),
-    applyRegion(supabase.from("customer_pool").select("id, company_name, region, created_at")).limit(1000),
-    applyRegion(
-      supabase.from("leads").select("id, company_name, status, value_estimate, currency, region, owner_id, created_at")
-    ).limit(1000),
-    applyRegion(
-      supabase.from("customers").select("id, company_name, is_active, owner_id, region, created_at")
-    ).limit(1000),
-  ]);
+  const emptyResult = Promise.resolve({ data: [] as unknown[] });
+
+  const [companiesRes, contactsRes, poolRes, leadsRes, customersRes, invoiceStatsRes, licenseStatsRes, ticketStatsRes, productRevenueRes] =
+    await Promise.all([
+      applyRegion(supabase.from("companies").select("id, name, region, created_at")).limit(1000),
+      supabase.from("contacts").select("id, first_name, last_name, created_at").limit(1000),
+      applyRegion(supabase.from("customer_pool").select("id, company_name, region, created_at")).limit(1000),
+      applyRegion(
+        supabase.from("leads").select("id, company_name, status, value_estimate, currency, region, owner_id, created_at")
+      ).limit(1000),
+      applyRegion(
+        supabase.from("customers").select("id, company_name, is_active, owner_id, region, created_at")
+      ).limit(1000),
+      // Aşağıdaki 4 sorgu sadece ilgili modüle erişimi olanlar için çalışır —
+      // erişimi olmayan roller için boş dizi döner (widget zaten render edilmez).
+      canViewFinance
+        ? supabase.from("invoices").select("amount, currency, status, due_date, created_at")
+        : emptyResult,
+      canViewLicenses
+        ? supabase
+            .from("licenses")
+            .select("id, customer_id, product, license_name, end_date")
+            .eq("status", "active")
+        : emptyResult,
+      canViewSupport ? supabase.from("support_tickets").select("status, priority") : emptyResult,
+      canViewFinance
+        ? supabase
+            .from("proposal_items")
+            .select("product, line_total, proposals!inner(status, currency)")
+            .eq("proposals.status", "accepted")
+        : emptyResult,
+    ]);
 
   const companies = (companiesRes.data ?? []) as CompanyRow[];
   const contacts = (contactsRes.data ?? []) as ContactRow[];
@@ -223,6 +275,85 @@ export default async function DashboardPage() {
   const customersPrevMonth = customers.filter(
     (c) => c.created_at >= prevMonthStart && c.created_at < thisMonthStart
   ).length;
+
+  const todayIso = now.toISOString().slice(0, 10);
+  const customerNameById: Record<string, string> = {};
+  customers.forEach((c) => {
+    customerNameById[c.id] = c.company_name;
+  });
+
+  // Finans özeti — sadece 'finance' modülüne erişimi olanlara (founder dahil).
+  const invoiceStats = (invoiceStatsRes.data ?? []) as {
+    amount: number;
+    currency: string;
+    status: "draft" | "sent" | "paid" | "cancelled";
+    due_date: string | null;
+    created_at: string;
+  }[];
+  const paidThisMonth = invoiceStats.filter((s) => s.status === "paid" && s.created_at >= thisMonthStart);
+  const pendingInvoices = invoiceStats.filter((s) => s.status === "sent");
+  const overdueInvoices = pendingInvoices.filter((s) => s.due_date && s.due_date < todayIso);
+
+  // Lisans yenileme özeti — sadece 'licenses' modülüne erişimi olanlara.
+  const activeLicenses = (licenseStatsRes.data ?? []) as {
+    id: string;
+    customer_id: string;
+    product: string;
+    license_name: string | null;
+    end_date: string;
+  }[];
+  const expiringLicenses = activeLicenses
+    .filter((l) => {
+      const d = daysUntil(l.end_date, todayIso);
+      return d >= 0 && d <= 30;
+    })
+    .sort((a, b) => daysUntil(a.end_date, todayIso) - daysUntil(b.end_date, todayIso));
+  const overdueLicensesCount = activeLicenses.filter((l) => daysUntil(l.end_date, todayIso) < 0).length;
+
+  // Destek özeti — sadece 'support' modülüne erişimi olanlara.
+  const ticketStats = (ticketStatsRes.data ?? []) as { status: string; priority: string }[];
+  const openTicketsCount = ticketStats.filter((t) => t.status === "open").length;
+  const waitingTicketsCount = ticketStats.filter((t) => t.status === "waiting_customer").length;
+  const urgentOpenTicketsCount = ticketStats.filter(
+    (t) => t.priority === "urgent" && t.status !== "closed" && t.status !== "resolved"
+  ).length;
+
+  // Ürün bazlı gelir kırılımı (kabul edilen tekliflerin kalemlerinden) —
+  // sadece 'finance' modülüne erişimi olanlara. proposal_items'ın kendi
+  // currency kolonu yok (bkz. lib/product-labels.ts DERS 48 ile aynı ruhta
+  // bir başka teknik borç notu) — teklifin kendi currency'si kullanılıyor,
+  // zaten tek bir teklifte tek para birimi garanti (proposal-wizard guard'ı).
+  const productRevenueRaw = (productRevenueRes.data ?? []) as {
+    product: string;
+    line_total: number;
+    proposals: { status: string; currency: string } | { status: string; currency: string }[] | null;
+  }[];
+  const revenueByProduct: Record<string, Record<string, number>> = {};
+  productRevenueRaw.forEach((r) => {
+    const proposalMeta = Array.isArray(r.proposals) ? r.proposals[0] : r.proposals;
+    const currency = proposalMeta?.currency ?? "USD";
+    revenueByProduct[r.product] = revenueByProduct[r.product] ?? {};
+    revenueByProduct[r.product][currency] = (revenueByProduct[r.product][currency] ?? 0) + Number(r.line_total || 0);
+  });
+  const productRevenueRows = PRODUCT_KEYS.filter((p) => revenueByProduct[p]).map((p) => ({
+    product: p,
+    text: Object.entries(revenueByProduct[p])
+      .map(([c, v]) => fmtMoney(v, c))
+      .join(" + "),
+  }));
+
+  // Aylık kazanılan müşteri trendi (son 6 ay) — müşteri kaydının oluşturulma
+  // anı = lead'in müşteriye dönüştüğü an (bkz. sales/customers akışı), bu
+  // yüzden ek bir sorguya gerek kalmadan yukarıda zaten çekilen `customers`
+  // dizisinden hesaplanır.
+  const monthTrend = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    const nextD = new Date(now.getFullYear(), now.getMonth() - (5 - i) + 1, 1);
+    const label = d.toLocaleDateString("tr-TR", { month: "short" });
+    const count = customers.filter((c) => c.created_at >= d.toISOString() && c.created_at < nextD.toISOString()).length;
+    return { label, count };
+  });
+  const monthTrendMax = Math.max(1, ...monthTrend.map((m) => m.count));
 
   const companiesNew7 = countSince(companies, last7Iso);
   const contactsNew7 = countSince(contacts, last7Iso);
@@ -480,6 +611,143 @@ export default async function DashboardPage() {
           </table>
         </div>
       )}
+
+      {(canViewFinance || canViewLicenses || canViewSupport) && (
+        <div className="mt-5">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-[13px] font-bold text-rg-ink">İş Durumu</div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {canViewFinance && (
+              <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
+                <div className="mb-3 flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-accent text-primary">
+                    <Receipt className="h-4 w-4" />
+                  </div>
+                  <Link href="/finance" className="text-[12.8px] font-bold text-rg-ink hover:text-primary">
+                    Finans
+                  </Link>
+                </div>
+                <div className="flex flex-col gap-2 text-[12px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-rg-ink-faint">Bu ay tahsil edilen</span>
+                    <span className="font-semibold text-gofactory">{sumByCurrency(paidThisMonth)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-rg-ink-faint">Bekleyen tahsilat</span>
+                    <span className="font-semibold text-golxp">{sumByCurrency(pendingInvoices)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-rg-ink-faint">Gecikmiş</span>
+                    <span className="font-semibold text-destructive">{sumByCurrency(overdueInvoices)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {canViewLicenses && (
+              <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
+                <div className="mb-3 flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-accent text-primary">
+                    <KeyRound className="h-4 w-4" />
+                  </div>
+                  <Link href="/licenses" className="text-[12.8px] font-bold text-rg-ink hover:text-primary">
+                    Lisans Yenilemeleri
+                  </Link>
+                </div>
+                {expiringLicenses.length === 0 && overdueLicensesCount === 0 ? (
+                  <p className="text-[12px] text-rg-ink-faint">Yaklaşan ya da gecikmiş yenileme yok.</p>
+                ) : (
+                  <div className="flex flex-col gap-2 text-[12px]">
+                    {overdueLicensesCount > 0 && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-rg-ink-faint">Gecikmiş yenileme</span>
+                        <span className="font-semibold text-destructive">{overdueLicensesCount}</span>
+                      </div>
+                    )}
+                    {expiringLicenses.slice(0, 3).map((l) => (
+                      <div key={l.id} className="flex items-center justify-between gap-2">
+                        <span className="truncate text-rg-ink-soft">
+                          {customerNameById[l.customer_id] ?? "—"} — {PRODUCT_LABEL[l.product] ?? l.product}
+                        </span>
+                        <span className="shrink-0 font-semibold text-golxp">{daysUntil(l.end_date, todayIso)} gün</span>
+                      </div>
+                    ))}
+                    {expiringLicenses.length > 3 && (
+                      <span className="text-[11px] text-rg-ink-faint">+{expiringLicenses.length - 3} tane daha</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {canViewSupport && (
+              <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
+                <div className="mb-3 flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-accent text-primary">
+                    <LifeBuoy className="h-4 w-4" />
+                  </div>
+                  <Link href="/support" className="text-[12.8px] font-bold text-rg-ink hover:text-primary">
+                    Destek Merkezi
+                  </Link>
+                </div>
+                <div className="flex flex-col gap-2 text-[12px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-rg-ink-faint">Açık talep</span>
+                    <span className="font-semibold text-destructive">{openTicketsCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-rg-ink-faint">Müşteri yanıtı bekleniyor</span>
+                    <span className="font-semibold text-gotools">{waitingTicketsCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-rg-ink-faint">Acil (açık)</span>
+                    <span className="font-semibold text-destructive">{urgentOpenTicketsCount}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-5 grid grid-cols-3 gap-5">
+        <div className={(canViewFinance ? "col-span-2 " : "col-span-3 ") + "rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg"}>
+          <div className="mb-4 text-[13px] font-bold text-rg-ink">Aylık Kazanılan Müşteri (Son 6 Ay)</div>
+          <div className="flex h-[120px] items-end gap-3">
+            {monthTrend.map((m) => (
+              <div key={m.label} className="flex flex-1 flex-col items-center gap-1.5">
+                <div className="flex w-full flex-1 items-end">
+                  <div
+                    className="w-full rounded-t-[6px] bg-primary/80"
+                    style={{ height: `${Math.max(4, (m.count / monthTrendMax) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[11px] font-semibold text-rg-ink">{m.count}</span>
+                <span className="text-[10.5px] text-rg-ink-faint">{m.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {canViewFinance && (
+          <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
+            <div className="mb-4 text-[13px] font-bold text-rg-ink">Ürün Bazlı Gelir</div>
+            {productRevenueRows.length === 0 ? (
+              <p className="text-[12px] text-rg-ink-faint">Henüz kabul edilmiş teklif geliri yok.</p>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {productRevenueRows.map((r) => (
+                  <div key={r.product} className="flex items-center justify-between gap-2 text-[12px]">
+                    <span className="font-semibold text-rg-ink">{PRODUCT_LABEL[r.product] ?? r.product}</span>
+                    <span className="text-rg-ink-soft">{r.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="mt-5">
         <div className="mb-3 flex items-center justify-between">
