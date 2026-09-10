@@ -39,7 +39,9 @@ export type StudioTemplateInput = {
   product: StudioProduct;
   description: string;
   validDays: number;
-  language: StudioLanguage;
+  /** Şablon satırının varsayılan/etiket dili — bölüm içerikleri her zaman TR + EN'i birlikte taşır. */
+  language?: StudioLanguage;
+  isDefaultForProduct?: boolean;
 };
 
 export async function createStudioTemplate(input: StudioTemplateInput): Promise<ActionResult & { id?: string }> {
@@ -50,12 +52,20 @@ export async function createStudioTemplate(input: StudioTemplateInput): Promise<
   }
   const { data: template, error: templateError } = await supabase
     .from("proposal_templates")
-    .insert({ name: input.name.trim(), product: input.product, language: input.language, description: input.description.trim() || null, valid_days: input.validDays, is_active: true, is_default_for_product: false })
+    .insert({
+      name: input.name.trim(),
+      product: input.product,
+      language: input.language ?? "tr",
+      description: input.description.trim() || null,
+      valid_days: input.validDays,
+      is_active: true,
+      is_default_for_product: input.isDefaultForProduct ?? false,
+    })
     .select("id")
     .single();
   if (templateError || !template) return { ok: false, error: templateError?.message ?? "Şablon oluşturulamadı." };
   const { error: sectionError } = await supabase.from("proposal_template_sections").insert(
-    createStudioSections(input.product, input.language).map((section) => ({ ...section, template_id: template.id }))
+    createStudioSections(input.product).map((section) => ({ ...section, template_id: template.id }))
   );
   if (sectionError) {
     return { ok: false, error: "Şablon oluşturuldu ancak belge bölümleri eklenemedi. Şablonu silmeden önce destek ekibiyle iletişime geç." };
@@ -64,25 +74,26 @@ export async function createStudioTemplate(input: StudioTemplateInput): Promise<
   return { ok: true, id: template.id };
 }
 
+/** Her ürün (+ genel ekosistem) için TEK bir ana/varsayılan şablon garantiler — içerik TR + EN'i
+ * birlikte taşıdığından artık dil başına ayrı satıra gerek yok. Bir ürün için zaten varsayılan bir
+ * şablon varsa (isim ne olursa olsun) dokunulmaz; sadece eksik olanlar oluşturulur. */
 export async function createStarterTemplateLibrary(): Promise<ActionResult & { created?: number; skipped?: number }> {
   const supabase = createClient();
   const { data: current, error: currentError } = await supabase
     .from("proposal_templates")
-    .select("name")
-    .in("name", STUDIO_PRODUCTS.flatMap((product) => [starterTemplateName(product.key, "tr"), starterTemplateName(product.key, "en")]));
+    .select("product")
+    .eq("is_default_for_product", true);
   if (currentError) return { ok: false, error: "Mevcut şablonlar okunamadı." };
-  const existing = new Set((current ?? []).map((template) => template.name as string));
+  const existingProducts = new Set((current ?? []).map((template) => (template.product as StudioProduct | null) ?? null));
   let created = 0;
   let skipped = 0;
   for (const product of STUDIO_PRODUCTS) {
-    for (const language of ["tr", "en"] as const) {
-      const name = starterTemplateName(product.key, language);
-      if (existing.has(name)) { skipped += 1; continue; }
-      const description = language === "tr" ? `${product.label} için ürün odaklı kurumsal teklif şablonu.` : `Product-led enterprise proposal template for ${product.label}.`;
-      const result = await createStudioTemplate({ name, product: product.key, description, validDays: 30, language });
-      if (!result.ok) return { ok: false, error: `${name} oluşturulamadı: ${result.error}` };
-      created += 1;
-    }
+    if (existingProducts.has(product.key)) { skipped += 1; continue; }
+    const name = starterTemplateName(product.key);
+    const description = `${product.label} için Türkçe ve İngilizce içeriğin birlikte yönetildiği kurumsal teklif şablonu.`;
+    const result = await createStudioTemplate({ name, product: product.key, description, validDays: 30, isDefaultForProduct: true });
+    if (!result.ok) return { ok: false, error: `${name} oluşturulamadı: ${result.error}` };
+    created += 1;
   }
   revalidatePath("/sales/proposal-templates");
   return { ok: true, created, skipped };
@@ -270,13 +281,15 @@ export async function updateTemplateSection(id: string, input: SectionInput): Pr
   }
 
   revalidatePath("/sales/proposal-templates");
+  revalidatePath("/sales/proposal-templates/[id]", "page");
   return { ok: true };
 }
 
-export async function createCustomTemplateSection(templateId: string, title: string, language: "tr" | "en"): Promise<ActionResult> {
+export async function createCustomTemplateSection(templateId: string, titleTr: string, titleEn: string): Promise<ActionResult> {
   const supabase = createClient();
-  const cleanTitle = title.trim();
-  if (!cleanTitle) return { ok: false, error: "Bölüm başlığı zorunlu." };
+  const cleanTr = titleTr.trim();
+  const cleanEn = titleEn.trim();
+  if (!cleanTr && !cleanEn) return { ok: false, error: "Bölüm başlığı zorunlu (en az bir dilde)." };
 
   const { data: current, error: readError } = await supabase
     .from("proposal_template_sections")
@@ -290,13 +303,14 @@ export async function createCustomTemplateSection(templateId: string, title: str
     template_id: templateId,
     section_type: "custom",
     sort_order: (current?.[0]?.sort_order ?? 0) + 1,
-    title_tr: language === "tr" ? cleanTitle : null,
-    title_en: language === "en" ? cleanTitle : null,
+    title_tr: cleanTr || null,
+    title_en: cleanEn || null,
     content: {},
   });
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/sales/proposal-templates");
+  revalidatePath("/sales/proposal-templates/[id]", "page");
   return { ok: true };
 }
 
@@ -319,6 +333,7 @@ export async function deleteCustomTemplateSection(id: string): Promise<ActionRes
   if (!count) return { ok: false, error: "Bu bölümü silme yetkin yok." };
 
   revalidatePath("/sales/proposal-templates");
+  revalidatePath("/sales/proposal-templates/[id]", "page");
   return { ok: true };
 }
 

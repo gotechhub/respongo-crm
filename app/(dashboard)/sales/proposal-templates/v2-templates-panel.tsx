@@ -2,12 +2,9 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Eye, FileText, GripVertical, LayoutTemplate, Loader2, Plus, Save, Trash2 } from "lucide-react";
-import { Logo } from "@/components/ui/logo";
-import { PRODUCT_LOGO } from "@/lib/product-logos";
-import { cloneProposalTemplate, createCustomTemplateSection, deleteCustomTemplateSection, updateTemplateSection, type SectionInput, type TemplateProduct } from "./actions";
+import { Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { deleteCustomTemplateSection, updateTemplateSection, type SectionInput, type TemplateProduct } from "./actions";
 
-const PRODUCT_LABEL: Record<string, string> = { golms: "GOLMS", golxp: "GOLXP", gocatalog: "GOCATALOG", gofactory: "GOFACTORY", gotools: "GOTOOLS", genel: "Respongo" };
 const SECTION_LABEL: Record<string, string> = { cover: "Kapak", customer_info: "Müşteri bilgisi", scope: "Kapsam", product_info: "Ürün detayları", bank_info: "Banka bilgileri", signature: "Onay ve imza", custom: "Özel bölüm" };
 const inputClass = "w-full rounded-lg border border-rg-line bg-rg-surface px-3 py-2 text-[13px] text-rg-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 const labelClass = "text-[10px] font-bold uppercase tracking-[.08em] text-rg-ink-faint";
@@ -15,34 +12,229 @@ const labelClass = "text-[10px] font-bold uppercase tracking-[.08em] text-rg-ink
 export type V2Section = { id: string; section_type: string; legal_region: "tr" | "us" | null; sort_order: number; title_tr: string | null; title_en: string | null; body_tr: string | null; body_en: string | null; content: Record<string, unknown> };
 export type V2Template = { id: string; name: string; product: TemplateProduct; language: "tr" | "en"; isActive: boolean; isDefaultForProduct: boolean; clonedFromId: string | null; sections: V2Section[] };
 
-function label(section: V2Section) { if (section.section_type === "legal_terms") return section.legal_region === "us" ? "Hukuki şartlar · US" : "Hukuki şartlar · TR"; return SECTION_LABEL[section.section_type] ?? section.section_type; }
+/** Bölümün müşteri/kullanıcıya gösterilecek etiketi — liste sayfası, sol menü ve
+ * önizleme HEPSİ bu tek fonksiyonu kullanır, böylece etiketler asla birbirinden sapmaz. */
+export function sectionLabel(section: V2Section) {
+  if (section.section_type === "legal_terms") return section.legal_region === "us" ? "Hukuki şartlar · US" : "Hukuki şartlar · TR";
+  return SECTION_LABEL[section.section_type] ?? section.section_type;
+}
 function lines(value: unknown) { return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : []; }
-function complete(section: V2Section, language: "tr" | "en") { if (section.section_type === "scope") return lines(section.content[`included_${language}`]).length > 0; if (section.section_type === "bank_info") return Boolean(section.content.bank_name || section.content.iban); return Boolean(language === "tr" ? section.title_tr || section.body_tr : section.title_en || section.body_en); }
+
+/** Bir bölümün "tamamlandı" sayılıp sayılmayacağı — liste sayfasındaki ilerleme
+ * çubuğu ile düzenleyicideki sol menü rozetleri AYNI mantığı paylaşır.
+ *
+ * Şablonlar artık TR + EN içeriği aynı satırda taşıdığı için "tamamlandı" varsayılan olarak
+ * HER İKİ dilin de dolu olmasını ister — tek istisna hukuki şartlar: TR bölgesi sadece Türkçe,
+ * US/Global bölgesi sadece İngilizce metin gerektirir (canlı verideki doğru/kasıtlı yapı budur). */
+export function isSectionComplete(section: V2Section) {
+  if (section.section_type === "scope") {
+    return lines(section.content.included_tr).length > 0 && lines(section.content.included_en).length > 0;
+  }
+  if (section.section_type === "bank_info") return Boolean(section.content.bank_name || section.content.iban);
+  if (section.section_type === "legal_terms") {
+    return section.legal_region === "us" ? Boolean(section.body_en) : Boolean(section.body_tr);
+  }
+  return Boolean((section.title_tr || section.body_tr) && (section.title_en || section.body_en));
+}
 
 function ListField({ title, value, onChange, disabled }: { title: string; value: string[]; onChange: (value: string[]) => void; disabled: boolean }) {
   const update = (index: number, next: string) => onChange(value.map((item, i) => i === index ? next : item));
   return <div className="rounded-xl border border-rg-line bg-rg-surface-alt p-3"><div className="mb-2 flex items-center justify-between"><span className={labelClass}>{title}</span><button type="button" disabled={disabled} onClick={() => onChange([...value, ""])} className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary disabled:opacity-40"><Plus className="h-3.5 w-3.5" />Madde ekle</button></div><div className="space-y-1.5">{value.map((item, i) => <div key={`${i}-${item}`} className="flex gap-1.5"><input disabled={disabled} value={item} onChange={(e) => update(i, e.target.value)} placeholder="Kapsam maddesi" className={inputClass} /><button type="button" disabled={disabled} onClick={() => onChange(value.filter((_, index) => index !== i))} aria-label="Maddeyi sil" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-rg-ink-faint hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /></button></div>)}</div>{value.length === 0 && <p className="py-2 text-[12px] text-rg-ink-faint">Henüz madde eklenmedi.</p>}</div>;
 }
 
-function SectionWorkspace({ section, language, isFounder, onDeleted }: { section: V2Section; language: "tr" | "en"; isFounder: boolean; onDeleted: () => void }) {
-  const localized = language === "tr";
-  const [title, setTitle] = useState(localized ? section.title_tr ?? "" : section.title_en ?? ""); const [body, setBody] = useState(localized ? section.body_tr ?? "" : section.body_en ?? ""); const [included, setIncluded] = useState(lines(section.content[`included_${language}`])); const [excluded, setExcluded] = useState(lines(section.content[`excluded_${language}`])); const [bank, setBank] = useState({ bank_name: String(section.content.bank_name ?? ""), account_name: String(section.content.account_name ?? ""), iban: String(section.content.iban ?? ""), swift: String(section.content.swift ?? "") }); const [pending, startTransition] = useTransition(); const [message, setMessage] = useState(""); const router = useRouter();
-  useEffect(() => { setTitle(localized ? section.title_tr ?? "" : section.title_en ?? ""); setBody(localized ? section.body_tr ?? "" : section.body_en ?? ""); setIncluded(lines(section.content[`included_${language}`])); setExcluded(lines(section.content[`excluded_${language}`])); }, [section, language, localized]);
-  const content = useMemo(() => section.section_type === "scope" ? { ...section.content, [`included_${language}`]: included.map(x => x.trim()).filter(Boolean), [`excluded_${language}`]: excluded.map(x => x.trim()).filter(Boolean) } : section.section_type === "bank_info" ? { ...section.content, ...bank } : section.content, [section, language, included, excluded, bank]);
-  function save() { setMessage(""); const input: SectionInput = { titleTr: localized ? title : section.title_tr ?? "", titleEn: localized ? section.title_en ?? "" : title, bodyTr: localized ? body : section.body_tr ?? "", bodyEn: localized ? section.body_en ?? "" : body, content }; startTransition(async () => { const result = await updateTemplateSection(section.id, input); setMessage(result.ok ? "Kaydedildi" : result.error); if (result.ok) router.refresh(); }); }
-  function remove() { startTransition(async () => { const result = await deleteCustomTemplateSection(section.id); if (result.ok) { onDeleted(); router.refresh(); } else setMessage(result.error); }); }
+/** Tek bir belge bölümünün düzenleme formu. Artık şablon düzenleyicisinin ORTA sütununda, solda
+ * bölüm menüsü + sağda tam önizleme ile birlikte kullanılır — ve kullanıcının açıkça istediği gibi,
+ * Türkçe ile İngilizce içerik burada YAN YANA, tek "Kaydet" ile aynı anda güncellenir. */
+export function SectionWorkspace({ section, isFounder, onDeleted }: { section: V2Section; isFounder: boolean; onDeleted: () => void }) {
+  const [titleTr, setTitleTr] = useState(section.title_tr ?? "");
+  const [titleEn, setTitleEn] = useState(section.title_en ?? "");
+  const [bodyTr, setBodyTr] = useState(section.body_tr ?? "");
+  const [bodyEn, setBodyEn] = useState(section.body_en ?? "");
+  const [includedTr, setIncludedTr] = useState(lines(section.content.included_tr));
+  const [includedEn, setIncludedEn] = useState(lines(section.content.included_en));
+  const [excludedTr, setExcludedTr] = useState(lines(section.content.excluded_tr));
+  const [excludedEn, setExcludedEn] = useState(lines(section.content.excluded_en));
+  const [bank, setBank] = useState({ bank_name: String(section.content.bank_name ?? ""), account_name: String(section.content.account_name ?? ""), iban: String(section.content.iban ?? ""), swift: String(section.content.swift ?? "") });
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    setTitleTr(section.title_tr ?? "");
+    setTitleEn(section.title_en ?? "");
+    setBodyTr(section.body_tr ?? "");
+    setBodyEn(section.body_en ?? "");
+    setIncludedTr(lines(section.content.included_tr));
+    setIncludedEn(lines(section.content.included_en));
+    setExcludedTr(lines(section.content.excluded_tr));
+    setExcludedEn(lines(section.content.excluded_en));
+    setBank({ bank_name: String(section.content.bank_name ?? ""), account_name: String(section.content.account_name ?? ""), iban: String(section.content.iban ?? ""), swift: String(section.content.swift ?? "") });
+  }, [section]);
+
+  const content = useMemo(() => {
+    if (section.section_type === "scope") {
+      return {
+        ...section.content,
+        included_tr: includedTr.map((x) => x.trim()).filter(Boolean),
+        included_en: includedEn.map((x) => x.trim()).filter(Boolean),
+        excluded_tr: excludedTr.map((x) => x.trim()).filter(Boolean),
+        excluded_en: excludedEn.map((x) => x.trim()).filter(Boolean),
+      };
+    }
+    if (section.section_type === "bank_info") return { ...section.content, ...bank };
+    return section.content;
+  }, [section, includedTr, includedEn, excludedTr, excludedEn, bank]);
+
+  function save() {
+    setMessage("");
+    const input: SectionInput = { titleTr, titleEn, bodyTr, bodyEn, content };
+    startTransition(async () => {
+      const result = await updateTemplateSection(section.id, input);
+      setMessage(result.ok ? "Kaydedildi" : result.error);
+      if (result.ok) router.refresh();
+    });
+  }
+  function remove() {
+    startTransition(async () => {
+      const result = await deleteCustomTemplateSection(section.id);
+      if (result.ok) {
+        onDeleted();
+        router.refresh();
+      } else setMessage(result.error);
+    });
+  }
+
   const legal = section.section_type === "legal_terms";
-  return <section className="flex min-w-0 flex-col rounded-2xl border border-rg-line bg-rg-surface shadow-rg"><header className="flex items-start justify-between gap-4 border-b border-rg-line px-5 py-4"><div><div className="flex items-center gap-2"><h3 className="font-display text-[16px] font-bold text-rg-ink">{label(section)}</h3><span className="rounded-full bg-rg-surface-alt px-2 py-0.5 text-[10px] font-bold text-rg-ink-faint">{language.toUpperCase()}</span></div><p className="mt-1 text-[11.5px] text-rg-ink-faint">Müşterinin belge içinde göreceği içeriği düzenleyin.</p></div>{isFounder && <div className="flex gap-2">{section.section_type === "custom" && <button type="button" onClick={remove} disabled={pending} className="grid h-9 w-9 place-items-center rounded-lg border border-rg-line text-rg-ink-faint hover:border-destructive hover:text-destructive" title="Özel bölümü sil"><Trash2 className="h-4 w-4" /></button>}<button type="button" onClick={save} disabled={pending} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[12px] font-bold text-white disabled:opacity-50">{pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Kaydet</button></div>}</header><div className="space-y-4 p-5">{legal && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-900">Bu metin hukuki inceleme gerektirir. Onaylanmış şartları buraya ekleyin.</div>}{section.section_type !== "scope" && section.section_type !== "bank_info" && <><div><label className={labelClass}>Bölüm başlığı</label><input disabled={!isFounder} value={title} onChange={e => setTitle(e.target.value)} className={`${inputClass} mt-1`} /></div><div><label className={labelClass}>Belge metni</label><textarea disabled={!isFounder} rows={legal ? 13 : 9} value={body} onChange={e => setBody(e.target.value)} placeholder="Bu bölümün müşteri tarafından görülecek metni" className={`${inputClass} mt-1 resize-y leading-6`} /></div></>}{section.section_type === "scope" && <div className="grid gap-3 xl:grid-cols-2"><ListField title="Dahil olanlar" value={included} onChange={setIncluded} disabled={!isFounder} /><ListField title="Dahil olmayanlar" value={excluded} onChange={setExcluded} disabled={!isFounder} /></div>}{section.section_type === "bank_info" && <div className="grid gap-3 sm:grid-cols-2"><div><label className={labelClass}>Banka</label><input disabled={!isFounder} value={bank.bank_name} onChange={e => setBank({ ...bank, bank_name: e.target.value })} className={`${inputClass} mt-1`} /></div><div><label className={labelClass}>Hesap adı</label><input disabled={!isFounder} value={bank.account_name} onChange={e => setBank({ ...bank, account_name: e.target.value })} className={`${inputClass} mt-1`} /></div><div><label className={labelClass}>IBAN</label><input disabled={!isFounder} value={bank.iban} onChange={e => setBank({ ...bank, iban: e.target.value })} className={`${inputClass} mt-1`} /></div><div><label className={labelClass}>SWIFT / BIC</label><input disabled={!isFounder} value={bank.swift} onChange={e => setBank({ ...bank, swift: e.target.value })} className={`${inputClass} mt-1`} /></div></div>}{message && <p className={message === "Kaydedildi" ? "text-[12px] text-gofactory" : "text-[12px] text-destructive"}>{message}</p>}</div></section>;
-}
+  const isScope = section.section_type === "scope";
+  const isBank = section.section_type === "bank_info";
+  const langBadge = "inline-block rounded-full bg-rg-surface px-2 py-0.5 text-[10px] font-bold text-rg-ink-soft";
+  const langCol = "space-y-3 rounded-xl border border-rg-line bg-rg-surface-alt p-3.5";
 
-function CustomerPreview({ template, section }: { template: V2Template; section: V2Section }) { const lang = template.language; const title = lang === "tr" ? section.title_tr : section.title_en; const body = lang === "tr" ? section.body_tr : section.body_en; return <aside className="rounded-2xl border border-rg-line bg-rg-surface p-4"><div className="mb-3 flex items-center gap-2 text-[11px] font-bold text-rg-ink-soft"><Eye className="h-3.5 w-3.5" />MÜŞTERİ ÖNİZLEMESİ</div><div className="min-h-[360px] rounded-xl bg-slate-950 p-4 text-white"><div className="border-b border-white/15 pb-4"><span className="text-[10px] font-bold tracking-[.16em] text-white/55">RESPONGO · PROPOSAL</span><h4 className="mt-4 text-lg font-semibold">{template.name}</h4></div><div className="mt-6"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-white/45">{label(section)}</p><h5 className="mt-2 text-[15px] font-semibold">{title || "Bölüm başlığı"}</h5>{section.section_type === "scope" ? <ul className="mt-3 space-y-2 text-[11px] text-white/75">{lines(section.content[`included_${lang}`]).slice(0, 4).map(item => <li key={item}>• {item}</li>)}</ul> : <p className="mt-3 whitespace-pre-wrap text-[11px] leading-5 text-white/75">{body || "Düzenleyicide yazdığınız metin burada görünecek."}</p>}</div></div></aside>; }
+  return (
+    <section className="flex min-w-0 flex-col rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
+      <header className="flex items-start justify-between gap-4 border-b border-rg-line px-5 py-4">
+        <div>
+          <h3 className="font-display text-[16px] font-bold text-rg-ink">{sectionLabel(section)}</h3>
+          <p className="mt-1 text-[11.5px] text-rg-ink-faint">
+            Türkçe ve İngilizce içerik burada bir arada — tek &quot;Kaydet&quot; ikisini birden günceller.
+          </p>
+        </div>
+        {isFounder && (
+          <div className="flex gap-2">
+            {section.section_type === "custom" && (
+              <button
+                type="button"
+                onClick={remove}
+                disabled={pending}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-rg-line text-rg-ink-faint hover:border-destructive hover:text-destructive"
+                title="Özel bölümü sil"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={save}
+              disabled={pending}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[12px] font-bold text-white disabled:opacity-50"
+            >
+              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Kaydet
+            </button>
+          </div>
+        )}
+      </header>
 
-export function V2TemplatesPanel({ templates, isFounder }: { templates: V2Template[]; isFounder: boolean }) {
-  const [selectedId, setSelectedId] = useState(templates[0]?.id ?? ""); const selected = templates.find(t => t.id === selectedId) ?? templates[0]; const [sectionId, setSectionId] = useState(selected?.sections[0]?.id ?? ""); const [customTitle, setCustomTitle] = useState(""); const [pending, startTransition] = useTransition(); const [message, setMessage] = useState(""); const router = useRouter();
-  useEffect(() => { if (selected && !selected.sections.some(s => s.id === sectionId)) setSectionId(selected.sections[0]?.id ?? ""); }, [selected, sectionId]);
-  if (!selected) return <div className="rounded-2xl border border-dashed border-rg-line p-10 text-center text-[12px] text-rg-ink-faint">Henüz bölüm bazlı şablon yok. Başlangıç kütüphanesini oluşturduğunuzda burada düzenleyebilirsiniz.</div>;
-  const section = selected.sections.find(s => s.id === sectionId) ?? selected.sections[0];
-  function addSection() { setMessage(""); startTransition(async () => { const result = await createCustomTemplateSection(selected.id, customTitle, selected.language); if (result.ok) { setCustomTitle(""); setMessage("Özel bölüm eklendi."); router.refresh(); } else setMessage(result.error); }); }
-  function clone() { setMessage(""); startTransition(async () => { const result = await cloneProposalTemplate(selected.id); setMessage(result.ok ? "Şablon kopyalandı." : result.error); if (result.ok) router.refresh(); }); }
-  return <div className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-display text-[16px] font-bold text-rg-ink">Belge düzenleyici</h2><p className="mt-1 text-[12px] text-rg-ink-faint">Şablonu, belge bölümlerini ve müşteri görünümünü tek ekranda yönetin.</p></div>{isFounder ? <button type="button" disabled={pending} onClick={clone} className="inline-flex items-center gap-1.5 rounded-lg border border-rg-line bg-rg-surface px-3 py-2 text-[12px] font-semibold text-rg-ink"><Copy className="h-3.5 w-3.5" />Şablonu kopyala</button> : <span className="text-[12px] text-rg-ink-faint">Düzenleme yetkisi Süper Admin&apos;dedir.</span>}</div>{message && <p className="text-[12px] text-rg-ink-soft">{message}</p>}<div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_260px]"><aside className="rounded-2xl border border-rg-line bg-rg-surface p-2"><p className="px-2 pb-2 pt-1 text-[10px] font-bold tracking-[.08em] text-rg-ink-faint">ŞABLONLAR</p><div className="space-y-1">{templates.map(t => <button type="button" key={t.id} onClick={() => { setSelectedId(t.id); setSectionId(t.sections[0]?.id ?? ""); }} className={`w-full rounded-xl p-2.5 text-left ${t.id === selected.id ? "bg-primary text-white" : "hover:bg-rg-surface-alt"}`}><div className="flex items-center gap-2">{t.product && PRODUCT_LOGO[t.product] ? <Logo product={t.product} alt={PRODUCT_LABEL[t.product]} className="h-4 w-14 object-contain object-left" /> : <LayoutTemplate className="h-4 w-4" />}<span className="ml-auto text-[10px] font-bold opacity-70">{t.language.toUpperCase()}</span></div><p className="mt-2 text-[11.5px] font-semibold leading-4">{t.name}</p><p className="mt-1 text-[10px] opacity-65">{t.sections.length} bölüm</p></button>)}</div></aside><div className="min-w-0 space-y-3"><div className="flex gap-2 overflow-x-auto rounded-2xl border border-rg-line bg-rg-surface p-2">{selected.sections.map(s => <button key={s.id} type="button" onClick={() => setSectionId(s.id)} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-semibold ${s.id === section.id ? "bg-rg-ink text-white" : "text-rg-ink-soft hover:bg-rg-surface-alt"}`}><GripVertical className="h-3 w-3 opacity-40" /><span className={`h-1.5 w-1.5 rounded-full ${complete(s, selected.language) ? "bg-gofactory" : "bg-amber-400"}`} />{label(s)}</button>)}</div>{section && <SectionWorkspace key={`${section.id}-${selected.language}`} section={section} language={selected.language} isFounder={isFounder} onDeleted={() => setSectionId(selected.sections.find(s => s.id !== section.id)?.id ?? "")} />}{isFounder && <div className="flex gap-2 rounded-xl border border-dashed border-rg-line bg-rg-surface-alt p-3"><FileText className="mt-2 h-4 w-4 shrink-0 text-rg-ink-faint" /><input value={customTitle} onChange={e => setCustomTitle(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addSection(); }} placeholder="Özel bölüm başlığı" className={inputClass} /><button type="button" disabled={pending || !customTitle.trim()} onClick={addSection} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-rg-ink px-3 text-[12px] font-bold text-white disabled:opacity-40"><Plus className="h-3.5 w-3.5" />Ekle</button></div>}</div>{section && <CustomerPreview template={selected} section={section} />}</div></div>;
+      <div className="space-y-4 p-5">
+        {legal && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-900">
+            Bu metin hukuki inceleme gerektirir. Onaylanmış şartları buraya ekleyin.{" "}
+            {section.legal_region === "us"
+              ? "Bu bölge (US/Global) için genellikle yalnızca İngilizce metin yeterlidir."
+              : "Bu bölge (Türkiye) için genellikle yalnızca Türkçe metin yeterlidir."}
+          </div>
+        )}
+
+        {!isScope && !isBank && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className={langCol}>
+              <span className={langBadge}>Türkçe</span>
+              <div>
+                <label className={labelClass}>Bölüm başlığı</label>
+                <input disabled={!isFounder} value={titleTr} onChange={(e) => setTitleTr(e.target.value)} className={`${inputClass} mt-1`} />
+              </div>
+              <div>
+                <label className={labelClass}>Belge metni</label>
+                <textarea
+                  disabled={!isFounder}
+                  rows={legal ? 12 : 8}
+                  value={bodyTr}
+                  onChange={(e) => setBodyTr(e.target.value)}
+                  placeholder="Bu bölümün müşteri tarafından görülecek Türkçe metni"
+                  className={`${inputClass} mt-1 resize-y leading-6`}
+                />
+              </div>
+            </div>
+            <div className={langCol}>
+              <span className={langBadge}>English</span>
+              <div>
+                <label className={labelClass}>Section title</label>
+                <input disabled={!isFounder} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className={`${inputClass} mt-1`} />
+              </div>
+              <div>
+                <label className={labelClass}>Document text</label>
+                <textarea
+                  disabled={!isFounder}
+                  rows={legal ? 12 : 8}
+                  value={bodyEn}
+                  onChange={(e) => setBodyEn(e.target.value)}
+                  placeholder="The English text customers will see for this section"
+                  className={`${inputClass} mt-1 resize-y leading-6`}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isScope && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className={langCol}>
+              <span className={langBadge}>Türkçe</span>
+              <ListField title="Dahil olanlar" value={includedTr} onChange={setIncludedTr} disabled={!isFounder} />
+              <ListField title="Dahil olmayanlar" value={excludedTr} onChange={setExcludedTr} disabled={!isFounder} />
+            </div>
+            <div className={langCol}>
+              <span className={langBadge}>English</span>
+              <ListField title="Included" value={includedEn} onChange={setIncludedEn} disabled={!isFounder} />
+              <ListField title="Excluded" value={excludedEn} onChange={setExcludedEn} disabled={!isFounder} />
+            </div>
+          </div>
+        )}
+
+        {isBank && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Banka</label>
+              <input disabled={!isFounder} value={bank.bank_name} onChange={(e) => setBank({ ...bank, bank_name: e.target.value })} className={`${inputClass} mt-1`} />
+            </div>
+            <div>
+              <label className={labelClass}>Hesap adı</label>
+              <input disabled={!isFounder} value={bank.account_name} onChange={(e) => setBank({ ...bank, account_name: e.target.value })} className={`${inputClass} mt-1`} />
+            </div>
+            <div>
+              <label className={labelClass}>IBAN</label>
+              <input disabled={!isFounder} value={bank.iban} onChange={(e) => setBank({ ...bank, iban: e.target.value })} className={`${inputClass} mt-1`} />
+            </div>
+            <div>
+              <label className={labelClass}>SWIFT / BIC</label>
+              <input disabled={!isFounder} value={bank.swift} onChange={(e) => setBank({ ...bank, swift: e.target.value })} className={`${inputClass} mt-1`} />
+            </div>
+            <p className="text-[11px] text-rg-ink-faint sm:col-span-2">Banka bilgileri dilden bağımsızdır, tek seferde girilir.</p>
+          </div>
+        )}
+
+        {message && <p className={message === "Kaydedildi" ? "text-[12px] text-gofactory" : "text-[12px] text-destructive"}>{message}</p>}
+      </div>
+    </section>
+  );
 }

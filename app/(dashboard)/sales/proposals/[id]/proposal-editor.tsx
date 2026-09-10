@@ -8,6 +8,7 @@ import {
   deleteProposalItem,
   submitProposal,
   updateProposalItem,
+  updateProposalVatRate,
   type ProductKey,
   type ProposalItemInput,
 } from "../actions";
@@ -122,11 +123,13 @@ export function ProposalEditor({
   currency,
   items,
   priceLists,
+  vatRate,
 }: {
   proposalId: string;
   currency: string;
   items: EditableProposalItem[];
   priceLists: PriceListForEditor[];
+  vatRate: number;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -134,6 +137,22 @@ export function ProposalEditor({
   const [customDesc, setCustomDesc] = useState("");
   const [customPrice, setCustomPrice] = useState("");
   const [customProduct, setCustomProduct] = useState<ProductKey>("golms");
+  const [vatInput, setVatInput] = useState(String(vatRate));
+
+  const subtotal = items.reduce((sum, item) => sum + Number(item.line_total ?? 0), 0);
+  const vatPct = Number(vatInput) || 0;
+  const vatAmount = subtotal * (vatPct / 100);
+  const grandTotal = subtotal + vatAmount;
+  const fmt = (n: number) => n.toLocaleString("tr-TR", { maximumFractionDigits: 2 }) + " " + currency;
+
+  function saveVatRate() {
+    setError("");
+    startTransition(async () => {
+      const result = await updateProposalVatRate(proposalId, Number(vatInput) || 0);
+      if (result.ok) refresh();
+      else setError(result.error);
+    });
+  }
 
   function refresh() {
     router.refresh();
@@ -250,6 +269,40 @@ export function ProposalEditor({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <div className="flex flex-col gap-1.5 rounded-[10px] border border-rg-line bg-rg-surface-alt p-4 sm:items-end">
+          <div className="flex w-full max-w-xs items-center justify-between text-[12.5px] text-rg-ink-soft">
+            <span>Ara Toplam</span>
+            <span>{fmt(subtotal)}</span>
+          </div>
+          <div className="flex w-full max-w-xs items-center justify-between gap-2 text-[12.5px] text-rg-ink-soft">
+            <span>KDV / Vergi Oranı</span>
+            <span className="flex items-center gap-1">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={vatInput}
+                onChange={(e) => setVatInput(e.target.value)}
+                onBlur={saveVatRate}
+                disabled={isPending}
+                className="w-16 rounded-[6px] border border-rg-line bg-rg-surface px-2 py-1 text-right text-[12px] text-rg-ink outline-none focus:border-primary disabled:opacity-50"
+              />
+              %
+            </span>
+          </div>
+          <div className="flex w-full max-w-xs items-center justify-between text-[12.5px] text-rg-ink-soft">
+            <span>KDV Tutarı</span>
+            <span>{fmt(vatAmount)}</span>
+          </div>
+          <div className="flex w-full max-w-xs items-center justify-between border-t border-rg-line pt-1.5 text-[14px] font-bold text-rg-ink">
+            <span>Genel Toplam</span>
+            <span>{fmt(grandTotal)}</span>
+          </div>
         </div>
       )}
 

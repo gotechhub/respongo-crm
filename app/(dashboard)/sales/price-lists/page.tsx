@@ -67,7 +67,7 @@ export default async function PriceListsPage({
     <>
       <Topbar
         title="Fiyat Listeleri"
-        subtitle="Ürün kataloğu respongo.com'daki güncel ürün yapısından alındı — birim fiyatlar henüz girilmedi (0), her ürün kuruma özel teklifle satılıyor."
+        subtitle="Fiyatlar Respongo 2026 resmi fiyat listesine göre güncellendi. GOLXP için resmi liste henüz yayınlanmadığından listedeki fiyatlar örnek/referans niteliğindedir. 'Teklife özel' işaretli kalemler kurum ihtiyacına göre ayrı fiyatlandırılır."
       />
       <div className="mb-3">
         <Suspense fallback={<div className="h-[38px] w-[240px]" />}>

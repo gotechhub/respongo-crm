@@ -32,8 +32,13 @@ export type TemplateOption = {
   language: "tr" | "en";
   description: string | null;
   valid_days: number;
+  isDefaultForProduct: boolean;
+  clonedFromId: string | null;
   // Teklif Şablonları 2.0: bölüm bazlı (proposal_template_sections'ı olan) şablonlar TR+EN
-  // içeriği tek satırda taşır — sihirbazın dil seçicisiyle filtrelenmez, her zaman gösterilir.
+  // içeriğini AYNI satırda taşır — sihirbazın dil seçicisiyle filtrelenmez, her zaman gösterilir.
+  // Sadece ürünün varsayılan/ana şablonu (veya bir kullanıcı kopyası) listelenir; eski dil-başına-
+  // satır düzeninden kalan kullanımdan kalkmış yedekler burada gösterilmez (silinmedi, hâlâ geçmiş
+  // tekliflerde kullanılıyor olabilir).
 };
 
 type LineItem = {
@@ -90,6 +95,8 @@ export function ProposalWizard({
   const [validUntil, setValidUntil] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [language, setLanguage] = useState<"tr" | "en">("tr");
+  const [vatRate, setVatRate] = useState("20");
+  const [vatTouched, setVatTouched] = useState(false);
   const [bulkDiscount, setBulkDiscount] = useState("");
   const [customDesc, setCustomDesc] = useState("");
   const [customProduct, setCustomProduct] = useState<ProductKey>("golms");
@@ -109,6 +116,11 @@ export function ProposalWizard({
     if (targetType === "lead") {
       const lead = leads.find((l) => l.id === id);
       if (lead) setCurrency(lead.currency);
+    }
+    // KDV varsayılanı hedefin bölgesine göre önerilir (TR: %20, yurt dışı/ihracat: %0)
+    // — kullanıcı elle değiştirdiyse (vatTouched) bir daha otomatik ezilmez.
+    if (found && !vatTouched) {
+      setVatRate(found.region === "tr" ? "20" : "0");
     }
   }
 
@@ -161,13 +173,19 @@ export function ProposalWizard({
 
   const totals = useMemo(() => {
     const subtotal = items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
-    const grandTotal = items.reduce((s, it) => s + it.quantity * it.unitPrice * (1 - it.discountPercent / 100), 0);
-    return { subtotal, discount: subtotal - grandTotal, grandTotal };
-  }, [items]);
+    const afterDiscount = items.reduce((s, it) => s + it.quantity * it.unitPrice * (1 - it.discountPercent / 100), 0);
+    const vatPct = Number(vatRate) || 0;
+    const vatAmount = afterDiscount * (vatPct / 100);
+    const grandTotal = afterDiscount + vatAmount;
+    return { subtotal, discount: subtotal - afterDiscount, afterDiscount, vatPct, vatAmount, grandTotal };
+  }, [items, vatRate]);
 
+  // Şablon içeriği TR + EN'i aynı satırda taşıdığından burada dile göre filtrelenmez — sihirbazın
+  // "Türkçe/English" seçimi sadece bu tekliften ÜRETİLECEK belgenin diline karar verir. Yalnızca
+  // ürünün ana/varsayılan şablonu ya da bir kullanıcı kopyası listelenir; eski yedek satırlar gizli.
   const filteredTemplates = templates.filter(
     (t) =>
-      t.language === language &&
+      (t.isDefaultForProduct || t.clonedFromId !== null) &&
       (productFilter === "all" || t.product === productFilter || t.product === null)
   );
 
@@ -208,6 +226,7 @@ export function ProposalWizard({
       validUntil,
       templateId,
       language,
+      vatRate: Number(vatRate) || 0,
       asDraft,
     };
     startTransition(async () => {
@@ -538,6 +557,29 @@ export function ProposalWizard({
               </div>
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <label className={labelClass}>KDV / Vergi Oranı (%)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  value={vatRate}
+                  onChange={(e) => {
+                    setVatRate(e.target.value);
+                    setVatTouched(true);
+                  }}
+                  className={`${inputClass} w-32`}
+                />
+                <p className="text-[11px] text-rg-ink-faint">
+                  {selectedTarget?.region === "tr"
+                    ? "Yurt içi teklif — varsayılan %20 KDV önerildi, gerekirse değiştir."
+                    : "Yurt dışı / ihracat teklifi — varsayılan %0 önerildi, gerekirse değiştir."}
+                </p>
+              </div>
+            </div>
+
             <div className="rounded-[10px] border border-rg-line bg-rg-surface-alt p-4">
               <div className="flex items-center justify-between text-[12.5px] text-rg-ink-soft">
                 <span>Ara Toplam</span>
@@ -546,6 +588,10 @@ export function ProposalWizard({
               <div className="mt-1.5 flex items-center justify-between text-[12.5px] text-rg-ink-soft">
                 <span>Toplam İskonto</span>
                 <span>-{fmtMoney(totals.discount, currency)}</span>
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-[12.5px] text-rg-ink-soft">
+                <span>KDV (%{totals.vatPct})</span>
+                <span>{fmtMoney(totals.vatAmount, currency)}</span>
               </div>
               <div className="mt-2 flex items-center justify-between border-t border-rg-line pt-2 text-[15px] font-bold text-rg-ink">
                 <span>Genel Toplam</span>
@@ -616,7 +662,7 @@ export function ProposalWizard({
             </div>
             {filteredTemplates.length === 0 && (
               <p className="text-[11.5px] text-rg-ink-faint">
-                Seçilen dilde bu ürüne özel şablon yok — şablonsuz devam edebilirsin.
+                Bu ürüne özel bir şablon yok — şablonsuz devam edebilirsin.
               </p>
             )}
           </div>
@@ -668,9 +714,25 @@ export function ProposalWizard({
               </table>
             </div>
 
-            <div className="flex items-center justify-between rounded-[10px] border border-rg-line bg-rg-surface-alt p-4 text-[15px] font-bold text-rg-ink">
-              <span>Genel Toplam</span>
-              <span>{fmtMoney(totals.grandTotal, currency)}</span>
+            <div className="rounded-[10px] border border-rg-line bg-rg-surface-alt p-4">
+              <div className="flex items-center justify-between text-[12.5px] text-rg-ink-soft">
+                <span>Ara Toplam</span>
+                <span>{fmtMoney(totals.subtotal, currency)}</span>
+              </div>
+              {totals.discount > 0 && (
+                <div className="mt-1.5 flex items-center justify-between text-[12.5px] text-rg-ink-soft">
+                  <span>Toplam İskonto</span>
+                  <span>-{fmtMoney(totals.discount, currency)}</span>
+                </div>
+              )}
+              <div className="mt-1.5 flex items-center justify-between text-[12.5px] text-rg-ink-soft">
+                <span>KDV (%{totals.vatPct})</span>
+                <span>{fmtMoney(totals.vatAmount, currency)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t border-rg-line pt-2 text-[15px] font-bold text-rg-ink">
+                <span>Genel Toplam</span>
+                <span>{fmtMoney(totals.grandTotal, currency)}</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-3 pt-1">

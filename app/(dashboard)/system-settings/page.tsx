@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ProfileRow, Region } from "@/lib/roles";
 import { SystemSettingsForm } from "./settings-form";
 import { ViewAsPanel } from "./view-as-panel";
+import { DemoDataPanel } from "./demo-data-panel";
 import type { SystemSettingsInput } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -56,22 +57,24 @@ export default async function SystemSettingsPage() {
     );
   }
 
-  const [{ data: settingsRow }, { data: candidateRows }, { data: logRows }] = await Promise.all([
-    supabase.from("system_settings").select("*").eq("id", true).single(),
-    supabase
-      .from("profiles")
-      .select("id, email, full_name, avatar_url, phone, role, region, is_active, created_at")
-      .neq("role", "founder")
-      .eq("is_active", true)
-      .order("full_name", { ascending: true }),
-    supabase
-      .from("view_as_audit_log")
-      .select(
-        "id, started_at, ended_at, founder:profiles!view_as_audit_log_founder_id_fkey(full_name,email), target:profiles!view_as_audit_log_target_profile_id_fkey(full_name,email)"
-      )
-      .order("started_at", { ascending: false })
-      .limit(30),
-  ]);
+  const [{ data: settingsRow }, { data: candidateRows }, { data: logRows }, { count: demoCompanyCount }] =
+    await Promise.all([
+      supabase.from("system_settings").select("*").eq("id", true).single(),
+      supabase
+        .from("profiles")
+        .select("id, email, full_name, avatar_url, phone, role, region, is_active, created_at")
+        .neq("role", "founder")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true }),
+      supabase
+        .from("view_as_audit_log")
+        .select(
+          "id, started_at, ended_at, founder:profiles!view_as_audit_log_founder_id_fkey(full_name,email), target:profiles!view_as_audit_log_target_profile_id_fkey(full_name,email)"
+        )
+        .order("started_at", { ascending: false })
+        .limit(30),
+      supabase.from("companies").select("id", { count: "exact", head: true }).eq("is_demo", true),
+    ]);
 
   const settings = settingsRow as {
     company_legal_name: string | null;
@@ -120,6 +123,13 @@ export default async function SystemSettingsPage() {
             gördüğü/yapabildiği her şeyi birebir görürsün. Her görüntüleme denetim kaydına düşer.
           </p>
           <ViewAsPanel candidates={candidates} />
+        </div>
+
+        <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
+          <div className="mb-1 text-[14px] font-bold text-rg-ink">Demo Verileri</div>
+          <div className="mb-4">
+            <DemoDataPanel hasDemoData={(demoCompanyCount ?? 0) > 0} />
+          </div>
         </div>
 
         <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">

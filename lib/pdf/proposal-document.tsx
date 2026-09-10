@@ -1,4 +1,5 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import path from "path";
+import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 
 const PRODUCT_LABEL: Record<string, string> = {
   golms: "GOLMS",
@@ -8,7 +9,52 @@ const PRODUCT_LABEL: Record<string, string> = {
   gotools: "GOTOOLS",
 };
 
+const PRODUCT_ACCENT: Record<string, string> = {
+  golms: "#2563eb",
+  golxp: "#7c3aed",
+  gocatalog: "#0f766e",
+  gofactory: "#ea580c",
+  gotools: "#0891b2",
+};
+
+const GENERAL_ACCENT = "#172554";
+
 const REGION_LABEL: Record<string, string> = { tr: "Türkiye", global: "Global" };
+
+// react-pdf'in Image bileşeni AVIF çözemiyor (yalnızca PNG/JPEG) — bu yüzden
+// sitenin AVIF logoları/ürün görselleri PNG/JPEG olarak assets/pdf-images
+// altına ayrıca dönüştürülüp gömüldü (bkz. assets/fonts'taki font kaydı ile
+// aynı desen: process.cwd()/assets/... — public/ klasörü serverless
+// fonksiyonda dosya sistemi üzerinden güvenilir okunamayabiliyor, assets/
+// köke gömülü olduğu için build çıktısına dahil oluyor).
+const imgDir = path.join(process.cwd(), "assets", "pdf-images");
+const logoPath = (key: string) => path.join(imgDir, "logos", `${key}.png`);
+const coverPath = (key: string) => path.join(imgDir, "covers", `${key}.jpg`);
+
+const PRODUCT_LOGO_COLOR: Record<string, string> = {
+  golms: logoPath("golms"),
+  golxp: logoPath("golxp"),
+  gocatalog: logoPath("gocatalog"),
+  gofactory: logoPath("gofactory"),
+  gotools: logoPath("gotools"),
+};
+const PRODUCT_LOGO_WHITE: Record<string, string> = {
+  golms: logoPath("golms-white"),
+  golxp: logoPath("golxp-white"),
+  gocatalog: logoPath("gocatalog-white"),
+  gofactory: logoPath("gofactory-white"),
+  gotools: logoPath("gotools-white"),
+};
+const PRODUCT_COVER_IMAGE: Record<string, string> = {
+  golms: coverPath("golms-dashboard"),
+  golxp: coverPath("golxp-dashboard"),
+  gocatalog: coverPath("gocatalog-learning"),
+  gofactory: coverPath("gofactory-content"),
+  gotools: coverPath("gotools-craft"),
+};
+const RESPONGO_LOGO_COLOR = logoPath("respongo-color");
+const RESPONGO_LOGO_WHITE = logoPath("respongo-white");
+const GENERAL_COVER_IMAGE = coverPath("respongo-ecosystem");
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -19,12 +65,20 @@ function fmtMoney(n: number, currency: string) {
   return `${Number(n).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ${currency}`;
 }
 
+// Kısa, okunabilir bir teklif referans numarası — proposal.id'nin son
+// bölümünden türetilir, veritabanında ayrı bir kolon gerektirmez.
+function proposalReference(proposal: { id: string; created_at: string }) {
+  const year = new Date(proposal.created_at).getFullYear();
+  const short = proposal.id.replace(/-/g, "").slice(-6).toUpperCase();
+  return `RSP-${year}-${short}`;
+}
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: "Roboto", fontSize: 10, color: "#171A23" },
-  brandRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 },
-  brandMark: { fontSize: 18, fontWeight: 700, color: "#2454C7" },
-  brandSlogan: { fontSize: 8.5, color: "#6B7280", marginTop: 2 },
-  docTitle: { fontSize: 20, fontWeight: 700, textAlign: "right" },
+  brandRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 },
+  brandLogo: { width: 108, height: undefined, aspectRatio: 288 / 110 },
+  brandSlogan: { fontSize: 8.5, color: "#6B7280", marginTop: 4 },
+  docTitle: { fontSize: 18, fontWeight: 700, textAlign: "right" },
   docMeta: { fontSize: 9, color: "#6B7280", textAlign: "right", marginTop: 3 },
   sectionCard: { border: "1pt solid #DFE3ED", borderRadius: 8, padding: 14, marginBottom: 16 },
   sectionTitle: { fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "#8A8FA0", marginBottom: 8 },
@@ -37,16 +91,21 @@ const styles = StyleSheet.create({
   tRow: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8, borderTop: "1pt solid #EEF0F6" },
   tHeadCell: { fontSize: 8, fontWeight: 700, textTransform: "uppercase", color: "#8A8FA0" },
   tCell: { fontSize: 9.5 },
-  colDesc: { width: "42%" },
-  colQty: { width: "12%", textAlign: "right" },
-  colUnit: { width: "18%", textAlign: "right" },
-  colDisc: { width: "12%", textAlign: "right" },
-  colTotal: { width: "16%", textAlign: "right" },
-  totalRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 14 },
-  totalBox: { border: "1pt solid #DFE3ED", borderRadius: 8, backgroundColor: "#EEF0F6", padding: "10 16", alignItems: "flex-end" },
-  totalLabel: { fontSize: 8, fontWeight: 700, textTransform: "uppercase", color: "#8A8FA0" },
-  totalValue: { fontSize: 16, fontWeight: 700, marginTop: 2 },
-  footer: { position: "absolute", bottom: 30, left: 40, right: 40, fontSize: 7.5, color: "#8A8FA0", textAlign: "center", borderTop: "1pt solid #EEF0F6", paddingTop: 8 },
+  colDesc: { width: "38%" },
+  colQty: { width: "10%", textAlign: "right" },
+  colUnit: { width: "17%", textAlign: "right" },
+  colDisc: { width: "11%", textAlign: "right" },
+  colTotal: { width: "15%", textAlign: "right" },
+  productPill: { alignSelf: "flex-start", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, marginTop: 3 },
+  productPillText: { fontSize: 6.8, fontWeight: 700, color: "#FFFFFF" },
+  totalsBox: { alignSelf: "flex-end", marginTop: 14, width: 220, border: "1pt solid #DFE3ED", borderRadius: 8, backgroundColor: "#F8F9FC", padding: 12 },
+  totalsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  totalsLabel: { fontSize: 8.5, color: "#6B7280" },
+  totalsValue: { fontSize: 9.5, color: "#171A23", fontWeight: 700 },
+  grandRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 6, paddingTop: 8, borderTop: "1pt solid #DFE3ED" },
+  grandLabel: { fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: "#8A8FA0" },
+  grandValue: { fontSize: 15, fontWeight: 700 },
+  footer: { position: "absolute", bottom: 24, left: 40, right: 40, fontSize: 7.5, color: "#8A8FA0", textAlign: "center", borderTop: "1pt solid #EEF0F6", paddingTop: 8, flexDirection: "row", justifyContent: "space-between" },
 });
 
 export type ProposalPdfItem = {
@@ -81,12 +140,23 @@ export type ProposalPdfSection = {
 };
 
 const extraStyles = StyleSheet.create({
-  coverPage: { padding: 48, fontFamily: "Roboto", fontSize: 10, color: "#171A23", justifyContent: "space-between" },
-  coverBrand: { fontSize: 22, fontWeight: 700, color: "#2454C7" },
-  coverSlogan: { fontSize: 9.5, color: "#6B7280", marginTop: 4 },
-  coverProduct: { fontSize: 15, fontWeight: 700, marginTop: 60 },
-  coverTitle: { fontSize: 28, fontWeight: 700, marginTop: 8 },
-  coverBody: { fontSize: 10.5, color: "#4A4F5E", marginTop: 14, lineHeight: 1.5 },
+  coverPage: { padding: 0, fontFamily: "Roboto", fontSize: 10, color: "#FFFFFF" },
+  coverBgImage: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0.55 },
+  coverOverlay: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "#0b1633", opacity: 0.72 },
+  coverContent: { flex: 1, padding: 48, justifyContent: "space-between" },
+  coverTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  coverRespongoLogo: { width: 118, height: undefined, aspectRatio: 288 / 110 },
+  coverProductLogo: { width: 110, height: undefined, aspectRatio: 3.6, marginTop: 2 },
+  coverEyebrow: { fontSize: 9, letterSpacing: 1.4, textTransform: "uppercase", color: "rgba(255,255,255,0.65)" },
+  coverPreparedFor: { fontSize: 10, color: "rgba(255,255,255,0.7)", marginTop: 40 },
+  coverTitle: { fontSize: 27, fontWeight: 700, marginTop: 6, lineHeight: 1.2 },
+  coverBody: { fontSize: 11, color: "rgba(255,255,255,0.88)", marginTop: 14, lineHeight: 1.5, maxWidth: 380 },
+  coverMetaRow: { flexDirection: "row", marginTop: 34 },
+  coverMetaCol: { marginRight: 34 },
+  coverMetaLabel: { fontSize: 7.5, textTransform: "uppercase", letterSpacing: 0.6, color: "rgba(255,255,255,0.55)" },
+  coverMetaValue: { fontSize: 10.5, fontWeight: 700, marginTop: 3, color: "#FFFFFF" },
+  coverFooter: { fontSize: 8, color: "rgba(255,255,255,0.55)" },
+
   extraPage: { padding: 40, fontFamily: "Roboto", fontSize: 10, color: "#171A23" },
   extraTitle: { fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#2454C7" },
   extraBody: { fontSize: 10, lineHeight: 1.55, color: "#171A23" },
@@ -96,11 +166,33 @@ const extraStyles = StyleSheet.create({
   bankField: { width: "45%", marginBottom: 10, marginRight: 20 },
   sigBlock: { marginTop: 40, flexDirection: "row", justifyContent: "space-between" },
   sigLine: { width: "42%", borderTop: "1pt solid #171A23", paddingTop: 6 },
+
+  introMetaCard: { flexDirection: "row", flexWrap: "wrap", border: "1pt solid #DFE3ED", borderRadius: 8, padding: 14, marginBottom: 16 },
+  introMetaCol: { width: "33%", marginBottom: 8 },
+  introLead: { fontSize: 11, lineHeight: 1.6, color: "#2C3040", marginBottom: 4 },
+  productLegendRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4, marginBottom: 4 },
+  productLegendChip: { flexDirection: "row", alignItems: "center", border: "1pt solid #DFE3ED", borderRadius: 6, paddingVertical: 6, paddingHorizontal: 10 },
+  productLegendLogo: { width: 62, height: undefined, aspectRatio: 3.6 },
 });
 
 function pick(lang: "tr" | "en", tr: string | null | undefined, en: string | null | undefined): string {
   if (lang === "tr") return tr || en || "";
   return en || tr || "";
+}
+
+function PageFooter({ lang }: { lang: "tr" | "en" }) {
+  return (
+    <View style={styles.footer} fixed>
+      <Text>
+        {lang === "tr"
+          ? "Bu belge bağlayıcı bir sözleşme değildir; nihai şartlar taraflarca imzalanacak sözleşmede belirlenir."
+          : "This document is not a binding contract; final terms are governed by the parties' signed agreement."}
+      </Text>
+      <Text
+        render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
+      />
+    </View>
+  );
 }
 
 export function ProposalPdfDocument({
@@ -109,12 +201,14 @@ export function ProposalPdfDocument({
   target,
   ownerName,
   sections,
+  templateProduct,
 }: {
   proposal: {
     id: string;
     title: string;
     currency: string;
     total_amount: number;
+    vat_rate?: number | null;
     valid_until: string | null;
     region: string | null;
     created_at: string;
@@ -125,6 +219,9 @@ export function ProposalPdfDocument({
   target: ProposalPdfTarget;
   ownerName: string | null;
   sections?: ProposalPdfSection[];
+  /** Teklifin bağlı olduğu şablonun ürünü (proposal_templates.product) — kapak
+   * görseli ve ürün logosu seçimi için. null/undefined ise Genel Ekosistem kapağı kullanılır. */
+  templateProduct?: string | null;
 }) {
   const contactName = target?.contact_name ?? target?.primary_contact_name ?? null;
   const contactEmail = target?.contact_email ?? target?.primary_contact_email ?? null;
@@ -142,84 +239,152 @@ export function ProposalPdfDocument({
   const bankSection = byType("bank_info");
   const signatureSection = byType("signature");
 
+  const reference = proposalReference(proposal);
+  const coverImage = templateProduct ? PRODUCT_COVER_IMAGE[templateProduct] ?? GENERAL_COVER_IMAGE : GENERAL_COVER_IMAGE;
+  const productWhiteLogo = templateProduct ? PRODUCT_LOGO_WHITE[templateProduct] : null;
+
+  // Bu teklifte geçen ürünlerin (kalemlerden türetilen) benzersiz listesi —
+  // "ön yazı" sayfasında ürün logolarını bir şerit halinde göstermek için.
+  const distinctProducts = Array.from(new Set(items.map((i) => i.product))).filter((p) => PRODUCT_LOGO_COLOR[p]);
+
+  const subtotal = items.reduce((sum, item) => sum + Number(item.line_total ?? 0), 0);
+  const totalDiscount = items.reduce(
+    (sum, item) => sum + item.quantity * item.unit_price - item.line_total,
+    0
+  );
+  const vatRate = Number(proposal.vat_rate ?? 0);
+  const vatAmount = subtotal * (vatRate / 100);
+
   return (
     <Document title={`Respongo Teklif - ${proposal.title}`}>
-      {coverSection && (
-        <Page size="A4" style={extraStyles.coverPage}>
-          <View>
-            <Text style={extraStyles.coverBrand}>RESPONGO</Text>
-            <Text style={extraStyles.coverSlogan}>Kurumsal Öğrenme ve Yetenek Teknolojileri</Text>
-            <Text style={extraStyles.coverProduct}>{pick(lang, coverSection.title_tr, coverSection.title_en) || "Teklif"}</Text>
-            <Text style={extraStyles.coverTitle}>{proposal.title}</Text>
-            <Text style={extraStyles.coverBody}>{pick(lang, coverSection.body_tr, coverSection.body_en)}</Text>
+      {/* SAYFA 1 — KAPAK: ürün/Respongo logoları, kapak görseli, teklif başlığı ve kısa tanıtım metni. */}
+      <Page size="A4" style={extraStyles.coverPage}>
+        <Image src={coverImage} style={extraStyles.coverBgImage} />
+        <View style={extraStyles.coverOverlay} />
+        <View style={extraStyles.coverContent}>
+          <View style={extraStyles.coverTopRow}>
+            <Image src={RESPONGO_LOGO_WHITE} style={extraStyles.coverRespongoLogo} />
+            {productWhiteLogo && <Image src={productWhiteLogo} style={extraStyles.coverProductLogo} />}
           </View>
-          <Text style={{ fontSize: 8.5, color: "#8A8FA0" }}>
-            {target?.company_name ?? ""} · {fmtDate(proposal.sent_at ?? proposal.created_at)}
+          <View>
+            <Text style={extraStyles.coverEyebrow}>{lang === "tr" ? "RESPONGO · TEKLİF" : "RESPONGO · PROPOSAL"} · {reference}</Text>
+            <Text style={extraStyles.coverPreparedFor}>{lang === "tr" ? "HAZIRLANAN" : "PREPARED FOR"}</Text>
+            <Text style={extraStyles.coverTitle}>{target?.company_name ?? proposal.title}</Text>
+            <Text style={extraStyles.coverBody}>
+              {coverSection
+                ? pick(lang, coverSection.body_tr, coverSection.body_en)
+                : proposal.title}
+            </Text>
+            <View style={extraStyles.coverMetaRow}>
+              <View style={extraStyles.coverMetaCol}>
+                <Text style={extraStyles.coverMetaLabel}>{lang === "tr" ? "Hazırlayan" : "Prepared by"}</Text>
+                <Text style={extraStyles.coverMetaValue}>{ownerName ?? "Respongo"}</Text>
+              </View>
+              <View style={extraStyles.coverMetaCol}>
+                <Text style={extraStyles.coverMetaLabel}>{lang === "tr" ? "Tarih" : "Date"}</Text>
+                <Text style={extraStyles.coverMetaValue}>{fmtDate(proposal.sent_at ?? proposal.created_at)}</Text>
+              </View>
+              <View style={extraStyles.coverMetaCol}>
+                <Text style={extraStyles.coverMetaLabel}>{lang === "tr" ? "Geçerlilik" : "Valid until"}</Text>
+                <Text style={extraStyles.coverMetaValue}>{fmtDate(proposal.valid_until)}</Text>
+              </View>
+            </View>
+          </View>
+          <Text style={extraStyles.coverFooter}>
+            Respongo · Kurumsal Öğrenme ve Yetenek Teknolojileri · respongo.com · {reference}
           </Text>
-        </Page>
-      )}
+        </View>
+      </Page>
 
+      {/* SAYFA 2 — ÖN YAZI / TEKLİF DETAYLARI: müşteri bilgileri, teklif meta verisi, giriş yazısı, kapsanan ürünler. */}
       <Page size="A4" style={styles.page}>
         <View style={styles.brandRow}>
           <View>
-            <Text style={styles.brandMark}>RESPONGO</Text>
+            <Image src={RESPONGO_LOGO_COLOR} style={styles.brandLogo} />
             <Text style={styles.brandSlogan}>Kurumsal Öğrenme ve Yetenek Teknolojileri</Text>
           </View>
           <View>
-            <Text style={styles.docTitle}>TEKLİF</Text>
-            <Text style={styles.docMeta}>{proposal.title}</Text>
-            <Text style={styles.docMeta}>Tarih: {fmtDate(proposal.sent_at ?? proposal.created_at)}</Text>
-            <Text style={styles.docMeta}>Geçerlilik: {fmtDate(proposal.valid_until)}</Text>
+            <Text style={styles.docTitle}>{lang === "tr" ? "TEKLİF DETAYLARI" : "PROPOSAL DETAILS"}</Text>
+            <Text style={styles.docMeta}>{reference} · {proposal.title}</Text>
+            <Text style={styles.docMeta}>
+              {(lang === "tr" ? "Tarih: " : "Date: ") + fmtDate(proposal.sent_at ?? proposal.created_at)}
+            </Text>
+            <Text style={styles.docMeta}>
+              {(lang === "tr" ? "Geçerlilik: " : "Valid until: ") + fmtDate(proposal.valid_until)}
+            </Text>
           </View>
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Müşteri Bilgileri</Text>
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldCol}>
-              <Text style={styles.fieldLabel}>Firma</Text>
-              <Text style={styles.fieldValue}>{target?.company_name ?? "—"}</Text>
-            </View>
-            <View style={styles.fieldCol}>
-              <Text style={styles.fieldLabel}>İlgili Kişi</Text>
-              <Text style={styles.fieldValue}>{contactName ?? "—"}</Text>
-            </View>
-            <View style={styles.fieldCol}>
-              <Text style={styles.fieldLabel}>E-posta</Text>
-              <Text style={styles.fieldValue}>{contactEmail ?? "—"}</Text>
-            </View>
+        {coverSection && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={styles.sectionTitle}>{lang === "tr" ? "Ön Yazı" : "Cover Letter"}</Text>
+            <Text style={extraStyles.introLead}>{pick(lang, coverSection.body_tr, coverSection.body_en)}</Text>
           </View>
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldCol}>
-              <Text style={styles.fieldLabel}>Bölge</Text>
-              <Text style={styles.fieldValue}>{proposal.region ? REGION_LABEL[proposal.region] ?? proposal.region : "—"}</Text>
-            </View>
-            <View style={styles.fieldCol}>
-              <Text style={styles.fieldLabel}>Para Birimi</Text>
-              <Text style={styles.fieldValue}>{proposal.currency}</Text>
-            </View>
-            <View style={styles.fieldCol}>
-              <Text style={styles.fieldLabel}>Hazırlayan</Text>
-              <Text style={styles.fieldValue}>{ownerName ?? "—"}</Text>
-            </View>
+        )}
+
+        <View style={extraStyles.introMetaCard}>
+          <View style={extraStyles.introMetaCol}>
+            <Text style={styles.fieldLabel}>{lang === "tr" ? "Firma" : "Company"}</Text>
+            <Text style={styles.fieldValue}>{target?.company_name ?? "—"}</Text>
+          </View>
+          <View style={extraStyles.introMetaCol}>
+            <Text style={styles.fieldLabel}>{lang === "tr" ? "İlgili Kişi" : "Contact"}</Text>
+            <Text style={styles.fieldValue}>{contactName ?? "—"}</Text>
+          </View>
+          <View style={extraStyles.introMetaCol}>
+            <Text style={styles.fieldLabel}>{lang === "tr" ? "E-posta" : "Email"}</Text>
+            <Text style={styles.fieldValue}>{contactEmail ?? "—"}</Text>
+          </View>
+          <View style={extraStyles.introMetaCol}>
+            <Text style={styles.fieldLabel}>{lang === "tr" ? "Bölge" : "Region"}</Text>
+            <Text style={styles.fieldValue}>{proposal.region ? REGION_LABEL[proposal.region] ?? proposal.region : "—"}</Text>
+          </View>
+          <View style={extraStyles.introMetaCol}>
+            <Text style={styles.fieldLabel}>{lang === "tr" ? "Para Birimi" : "Currency"}</Text>
+            <Text style={styles.fieldValue}>{proposal.currency}</Text>
+          </View>
+          <View style={extraStyles.introMetaCol}>
+            <Text style={styles.fieldLabel}>{lang === "tr" ? "Hazırlayan" : "Prepared by"}</Text>
+            <Text style={styles.fieldValue}>{ownerName ?? "—"}</Text>
           </View>
         </View>
 
+        {distinctProducts.length > 0 && (
+          <View style={{ marginBottom: 4 }}>
+            <Text style={styles.sectionTitle}>{lang === "tr" ? "Bu Teklif Kapsamındaki Ürünler" : "Products Covered in This Proposal"}</Text>
+            <View style={extraStyles.productLegendRow}>
+              {distinctProducts.map((p) => (
+                <View key={p} style={extraStyles.productLegendChip}>
+                  <Image src={PRODUCT_LOGO_COLOR[p]} style={extraStyles.productLegendLogo} />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <PageFooter lang={lang} />
+      </Page>
+
+      {/* SAYFA 3 — ÜRÜN VE HİZMET DETAYLARI: kalem tablosu + ara toplam/KDV/genel toplam. */}
+      <Page size="A4" style={styles.page}>
+        <Text style={[styles.sectionTitle, { fontSize: 13, textTransform: "none", color: "#171A23", marginBottom: 12 }]}>
+          {lang === "tr" ? "Ürün ve Hizmet Detayları" : "Products & Services"}
+        </Text>
         <View style={styles.table}>
           <View style={styles.tHeadRow}>
-            <Text style={[styles.tHeadCell, styles.colDesc]}>Kalem</Text>
-            <Text style={[styles.tHeadCell, styles.colQty]}>Adet</Text>
-            <Text style={[styles.tHeadCell, styles.colUnit]}>Birim Fiyat</Text>
-            <Text style={[styles.tHeadCell, styles.colDisc]}>İskonto</Text>
-            <Text style={[styles.tHeadCell, styles.colTotal]}>Toplam</Text>
+            <Text style={[styles.tHeadCell, styles.colDesc]}>{lang === "tr" ? "Kalem" : "Item"}</Text>
+            <Text style={[styles.tHeadCell, styles.colQty]}>{lang === "tr" ? "Adet" : "Qty"}</Text>
+            <Text style={[styles.tHeadCell, styles.colUnit]}>{lang === "tr" ? "Birim Fiyat" : "Unit Price"}</Text>
+            <Text style={[styles.tHeadCell, styles.colDisc]}>{lang === "tr" ? "İskonto" : "Discount"}</Text>
+            <Text style={[styles.tHeadCell, styles.colTotal]}>{lang === "tr" ? "Toplam" : "Total"}</Text>
           </View>
           {items.map((item) => (
             <View key={item.id} style={styles.tRow}>
               <View style={styles.colDesc}>
                 <Text style={styles.tCell}>{item.description || "—"}</Text>
-                <Text style={{ fontSize: 7.5, color: "#8A8FA0", marginTop: 2 }}>
-                  {PRODUCT_LABEL[item.product] ?? item.product}
-                </Text>
+                <View style={[styles.productPill, { backgroundColor: PRODUCT_ACCENT[item.product] ?? GENERAL_ACCENT }]}>
+                  <Text style={styles.productPillText}>{PRODUCT_LABEL[item.product] ?? item.product}</Text>
+                </View>
               </View>
               <Text style={[styles.tCell, styles.colQty]}>{item.quantity}</Text>
               <Text style={[styles.tCell, styles.colUnit]}>{fmtMoney(item.unit_price, proposal.currency)}</Text>
@@ -231,22 +396,33 @@ export function ProposalPdfDocument({
           ))}
           {items.length === 0 && (
             <View style={styles.tRow}>
-              <Text style={styles.tCell}>Bu teklifte kalem yok.</Text>
+              <Text style={styles.tCell}>{lang === "tr" ? "Bu teklifte kalem yok." : "This proposal has no items."}</Text>
             </View>
           )}
         </View>
 
-        <View style={styles.totalRow}>
-          <View style={styles.totalBox}>
-            <Text style={styles.totalLabel}>Genel Toplam</Text>
-            <Text style={styles.totalValue}>{fmtMoney(proposal.total_amount, proposal.currency)}</Text>
+        <View style={styles.totalsBox}>
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabel}>{lang === "tr" ? "Ara Toplam" : "Subtotal"}</Text>
+            <Text style={styles.totalsValue}>{fmtMoney(subtotal + totalDiscount, proposal.currency)}</Text>
+          </View>
+          {totalDiscount > 0.004 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>{lang === "tr" ? "Toplam İskonto" : "Total Discount"}</Text>
+              <Text style={styles.totalsValue}>-{fmtMoney(totalDiscount, proposal.currency)}</Text>
+            </View>
+          )}
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabel}>{lang === "tr" ? `KDV (%${vatRate})` : `VAT (${vatRate}%)`}</Text>
+            <Text style={styles.totalsValue}>{fmtMoney(vatAmount, proposal.currency)}</Text>
+          </View>
+          <View style={styles.grandRow}>
+            <Text style={styles.grandLabel}>{lang === "tr" ? "Genel Toplam" : "Grand Total"}</Text>
+            <Text style={styles.grandValue}>{fmtMoney(proposal.total_amount, proposal.currency)}</Text>
           </View>
         </View>
 
-        <Text style={styles.footer}>
-          Bu teklif Respongo CRM üzerinden otomatik oluşturulmuştur · respongo.com{"\n"}
-          Bu belge bağlayıcı bir sözleşme değildir; nihai şartlar taraflarca imzalanacak sözleşmede belirlenir.
-        </Text>
+        <PageFooter lang={lang} />
       </Page>
 
       {scopeSection && (
@@ -270,13 +446,18 @@ export function ProposalPdfDocument({
                 </Text>
               )
             )}
+          <PageFooter lang={lang} />
         </Page>
       )}
 
       {productSection && (
         <Page size="A4" style={extraStyles.extraPage}>
+          {templateProduct && PRODUCT_LOGO_COLOR[templateProduct] && (
+            <Image src={PRODUCT_LOGO_COLOR[templateProduct]} style={{ width: 110, height: undefined, aspectRatio: 3.6, marginBottom: 16 }} />
+          )}
           <Text style={extraStyles.extraTitle}>{pick(lang, productSection.title_tr, productSection.title_en)}</Text>
           <Text style={extraStyles.extraBody}>{pick(lang, productSection.body_tr, productSection.body_en)}</Text>
+          <PageFooter lang={lang} />
         </Page>
       )}
 
@@ -284,6 +465,7 @@ export function ProposalPdfDocument({
         <Page size="A4" style={extraStyles.extraPage}>
           <Text style={extraStyles.extraTitle}>{pick(lang, legalSection.title_tr, legalSection.title_en)}</Text>
           <Text style={extraStyles.extraBody}>{pick(lang, legalSection.body_tr, legalSection.body_en)}</Text>
+          <PageFooter lang={lang} />
         </Page>
       )}
 
@@ -309,6 +491,7 @@ export function ProposalPdfDocument({
               <Text style={styles.fieldValue}>{String(bankSection.content.swift || "—")}</Text>
             </View>
           </View>
+          <PageFooter lang={lang} />
         </Page>
       )}
 
@@ -327,6 +510,118 @@ export function ProposalPdfDocument({
                 {lang === "tr" ? "Müşteri Yetkilisi — Ad / Tarih" : "Customer Representative — Name / Date"}
               </Text>
             </View>
+          </View>
+          <PageFooter lang={lang} />
+        </Page>
+      )}
+
+      {!sections && (
+        <Page size="A4" style={{ padding: 0 }}>
+          {/* Şablonsuz (legacy) teklifler için tek sayfalık basit özet — kapak/kapsam/ürün
+              bilgisi/hukuki metin yok, ama logo ve KDV kırılımı burada da tutarlı görünür. */}
+          <View style={styles.page}>
+            <View style={styles.brandRow}>
+              <View>
+                <Image src={RESPONGO_LOGO_COLOR} style={styles.brandLogo} />
+                <Text style={styles.brandSlogan}>Kurumsal Öğrenme ve Yetenek Teknolojileri</Text>
+              </View>
+              <View>
+                <Text style={styles.docTitle}>{lang === "tr" ? "TEKLİF" : "PROPOSAL"}</Text>
+                <Text style={styles.docMeta}>{reference} · {proposal.title}</Text>
+                <Text style={styles.docMeta}>
+                  {(lang === "tr" ? "Tarih: " : "Date: ") + fmtDate(proposal.sent_at ?? proposal.created_at)}
+                </Text>
+                <Text style={styles.docMeta}>
+                  {(lang === "tr" ? "Geçerlilik: " : "Valid until: ") + fmtDate(proposal.valid_until)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>{lang === "tr" ? "Müşteri Bilgileri" : "Customer Details"}</Text>
+              <View style={styles.fieldRow}>
+                <View style={styles.fieldCol}>
+                  <Text style={styles.fieldLabel}>{lang === "tr" ? "Firma" : "Company"}</Text>
+                  <Text style={styles.fieldValue}>{target?.company_name ?? "—"}</Text>
+                </View>
+                <View style={styles.fieldCol}>
+                  <Text style={styles.fieldLabel}>{lang === "tr" ? "İlgili Kişi" : "Contact"}</Text>
+                  <Text style={styles.fieldValue}>{contactName ?? "—"}</Text>
+                </View>
+                <View style={styles.fieldCol}>
+                  <Text style={styles.fieldLabel}>{lang === "tr" ? "E-posta" : "Email"}</Text>
+                  <Text style={styles.fieldValue}>{contactEmail ?? "—"}</Text>
+                </View>
+              </View>
+              <View style={styles.fieldRow}>
+                <View style={styles.fieldCol}>
+                  <Text style={styles.fieldLabel}>{lang === "tr" ? "Bölge" : "Region"}</Text>
+                  <Text style={styles.fieldValue}>{proposal.region ? REGION_LABEL[proposal.region] ?? proposal.region : "—"}</Text>
+                </View>
+                <View style={styles.fieldCol}>
+                  <Text style={styles.fieldLabel}>{lang === "tr" ? "Para Birimi" : "Currency"}</Text>
+                  <Text style={styles.fieldValue}>{proposal.currency}</Text>
+                </View>
+                <View style={styles.fieldCol}>
+                  <Text style={styles.fieldLabel}>{lang === "tr" ? "Hazırlayan" : "Prepared by"}</Text>
+                  <Text style={styles.fieldValue}>{ownerName ?? "—"}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.table}>
+              <View style={styles.tHeadRow}>
+                <Text style={[styles.tHeadCell, styles.colDesc]}>{lang === "tr" ? "Kalem" : "Item"}</Text>
+                <Text style={[styles.tHeadCell, styles.colQty]}>{lang === "tr" ? "Adet" : "Qty"}</Text>
+                <Text style={[styles.tHeadCell, styles.colUnit]}>{lang === "tr" ? "Birim Fiyat" : "Unit Price"}</Text>
+                <Text style={[styles.tHeadCell, styles.colDisc]}>{lang === "tr" ? "İskonto" : "Discount"}</Text>
+                <Text style={[styles.tHeadCell, styles.colTotal]}>{lang === "tr" ? "Toplam" : "Total"}</Text>
+              </View>
+              {items.map((item) => (
+                <View key={item.id} style={styles.tRow}>
+                  <View style={styles.colDesc}>
+                    <Text style={styles.tCell}>{item.description || "—"}</Text>
+                    <View style={[styles.productPill, { backgroundColor: PRODUCT_ACCENT[item.product] ?? GENERAL_ACCENT }]}>
+                      <Text style={styles.productPillText}>{PRODUCT_LABEL[item.product] ?? item.product}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.tCell, styles.colQty]}>{item.quantity}</Text>
+                  <Text style={[styles.tCell, styles.colUnit]}>{fmtMoney(item.unit_price, proposal.currency)}</Text>
+                  <Text style={[styles.tCell, styles.colDisc]}>
+                    {item.discount_percent > 0 ? `%${item.discount_percent}` : "—"}
+                  </Text>
+                  <Text style={[styles.tCell, styles.colTotal]}>{fmtMoney(item.line_total, proposal.currency)}</Text>
+                </View>
+              ))}
+              {items.length === 0 && (
+                <View style={styles.tRow}>
+                  <Text style={styles.tCell}>{lang === "tr" ? "Bu teklifte kalem yok." : "This proposal has no items."}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.totalsBox}>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>{lang === "tr" ? "Ara Toplam" : "Subtotal"}</Text>
+                <Text style={styles.totalsValue}>{fmtMoney(subtotal + totalDiscount, proposal.currency)}</Text>
+              </View>
+              {totalDiscount > 0.004 && (
+                <View style={styles.totalsRow}>
+                  <Text style={styles.totalsLabel}>{lang === "tr" ? "Toplam İskonto" : "Total Discount"}</Text>
+                  <Text style={styles.totalsValue}>-{fmtMoney(totalDiscount, proposal.currency)}</Text>
+                </View>
+              )}
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>{lang === "tr" ? `KDV (%${vatRate})` : `VAT (${vatRate}%)`}</Text>
+                <Text style={styles.totalsValue}>{fmtMoney(vatAmount, proposal.currency)}</Text>
+              </View>
+              <View style={styles.grandRow}>
+                <Text style={styles.grandLabel}>{lang === "tr" ? "Genel Toplam" : "Grand Total"}</Text>
+                <Text style={styles.grandValue}>{fmtMoney(proposal.total_amount, proposal.currency)}</Text>
+              </View>
+            </View>
+
+            <PageFooter lang={lang} />
           </View>
         </Page>
       )}

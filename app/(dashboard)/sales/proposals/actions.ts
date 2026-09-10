@@ -54,8 +54,15 @@ export type ProposalWizardInput = {
   validUntil: string;
   templateId: string;
   language: "tr" | "en";
+  vatRate: number;
   asDraft: boolean;
 };
+
+// KDV oranı doğrulaması — hem oluşturma hem güncelleme aynı kuralı kullanır.
+function sanitizeVatRate(value: number): number {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Math.min(100, Math.round(value * 100) / 100);
+}
 
 function lineTotal(item: ProposalWizardItem) {
   return item.quantity * item.unitPrice * (1 - item.discountPercent / 100);
@@ -94,10 +101,14 @@ export async function createProposal(
     return { ok: false, error: "Seçilen kayda erişilemedi — yetkin olmayabilir." };
   }
 
-  const totalAmount = input.items.reduce((sum, item) => sum + lineTotal(item), 0);
+  const subtotal = input.items.reduce((sum, item) => sum + lineTotal(item), 0);
+  const vatRate = sanitizeVatRate(input.vatRate);
+  const vatAmount = subtotal * (vatRate / 100);
+  const totalAmount = subtotal + vatAmount;
 
   // Taslak olarak kaydedilmiyorsa (doğrudan gönderiliyorsa) eşik kontrolü yapılır:
   // tutar veya iskonto eşiği aşılıyorsa "sent" yerine "pending_approval" olur.
+  // Eşik, müşterinin ödeyeceği KDV dahil tutara göre değerlendirilir.
   const targetStatus: ProposalStatus = input.asDraft
     ? "draft"
     : needsApproval(
@@ -115,6 +126,7 @@ export async function createProposal(
       title: input.title.trim(),
       status: targetStatus,
       total_amount: Math.round(totalAmount * 100) / 100,
+      vat_rate: vatRate,
       currency: input.currency,
       valid_until: input.validUntil || null,
       owner_id: user.id,
@@ -508,15 +520,43 @@ async function assertProposalEditable(
 }
 
 async function recomputeProposalTotal(supabase: ReturnType<typeof createClient>, proposalId: string) {
-  const { data: items } = await supabase
-    .from("proposal_items")
-    .select("line_total")
-    .eq("proposal_id", proposalId);
-  const total = (items ?? []).reduce((sum, i) => sum + Number(i.line_total ?? 0), 0);
+  const [{ data: items }, { data: proposal }] = await Promise.all([
+    supabase.from("proposal_items").select("line_total").eq("proposal_id", proposalId),
+    supabase.from("proposals").select("vat_rate").eq("id", proposalId).single(),
+  ]);
+  const subtotal = (items ?? []).reduce((sum, i) => sum + Number(i.line_total ?? 0), 0);
+  const vatRate = Number(proposal?.vat_rate ?? 0);
+  const total = subtotal + subtotal * (vatRate / 100);
   await supabase
     .from("proposals")
     .update({ total_amount: Math.round(total * 100) / 100 })
     .eq("id", proposalId);
+}
+
+// Taslak/revizyon aşamasındaki bir teklifin KDV oranını değiştirir ve
+// total_amount'u (KDV dahil) yeniden hesaplar. addProposalItem/updateProposalItem/
+// deleteProposalItem ile aynı düzenlenebilirlik ve yetki kontrolünü kullanır.
+export async function updateProposalVatRate(proposalId: string, vatRate: number): Promise<ActionResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Oturum bulunamadı." };
+  }
+  const editable = await assertProposalEditable(supabase, proposalId, user.id);
+  if (!editable.ok) return editable;
+
+  const { error, count } = await supabase
+    .from("proposals")
+    .update({ vat_rate: sanitizeVatRate(vatRate) }, { count: "exact" })
+    .eq("id", proposalId);
+  if (error) return { ok: false, error: error.message };
+  if (!count) return { ok: false, error: "Bu teklifi güncelleme yetkin yok." };
+
+  await recomputeProposalTotal(supabase, proposalId);
+  revalidatePath(`/sales/proposals/${proposalId}`);
+  return { ok: true };
 }
 
 export type ProposalItemInput = {

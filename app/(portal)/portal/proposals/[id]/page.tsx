@@ -46,6 +46,9 @@ export default async function PortalProposalDetailPage({ params }: { params: { i
     .order("created_at", { ascending: true });
 
   const status = proposal.status as ProposalStatus;
+  const subtotal = (items ?? []).reduce((sum, i) => sum + Number(i.line_total ?? 0), 0);
+  const vatRate = Number(proposal.vat_rate ?? 0);
+  const vatAmount = subtotal * (vatRate / 100);
 
   return (
     <>
@@ -166,6 +169,22 @@ export default async function PortalProposalDetailPage({ params }: { params: { i
             )}
           </tbody>
         </table>
+        {(items ?? []).length > 0 && (
+          <div className="flex flex-col gap-1 border-t border-rg-line bg-rg-surface-alt px-4 py-3 sm:items-end">
+            <div className="flex w-full max-w-xs items-center justify-between text-[12px] text-rg-ink-soft">
+              <span>Ara Toplam</span>
+              <span>{fmtMoney(subtotal, proposal.currency)}</span>
+            </div>
+            <div className="flex w-full max-w-xs items-center justify-between text-[12px] text-rg-ink-soft">
+              <span>KDV (%{vatRate})</span>
+              <span>{fmtMoney(vatAmount, proposal.currency)}</span>
+            </div>
+            <div className="flex w-full max-w-xs items-center justify-between border-t border-rg-line pt-1.5 text-[13.5px] font-bold text-rg-ink">
+              <span>Genel Toplam</span>
+              <span>{fmtMoney(proposal.total_amount, proposal.currency)}</span>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

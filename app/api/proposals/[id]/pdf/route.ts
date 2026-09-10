@@ -53,13 +53,18 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   // bölümlerini (kapak/kapsam/ürün bilgisi/hukuki metin/banka/imza) de PDF'e dahil et.
   // template_id boşsa (eski teklifler) sections undefined kalır — tek sayfalık eski render korunur.
   let sections: ProposalPdfSection[] | undefined;
+  let templateProduct: string | null = null;
   if (proposal.template_id) {
-    const { data: sectionRows } = await supabase
-      .from("proposal_template_sections")
-      .select("section_type, legal_region, title_tr, title_en, body_tr, body_en, content")
-      .eq("template_id", proposal.template_id)
-      .order("sort_order", { ascending: true });
+    const [{ data: sectionRows }, { data: templateRow }] = await Promise.all([
+      supabase
+        .from("proposal_template_sections")
+        .select("section_type, legal_region, title_tr, title_en, body_tr, body_en, content")
+        .eq("template_id", proposal.template_id)
+        .order("sort_order", { ascending: true }),
+      supabase.from("proposal_templates").select("product").eq("id", proposal.template_id).single(),
+    ]);
     sections = (sectionRows ?? []) as ProposalPdfSection[];
+    templateProduct = (templateRow?.product as string | null) ?? null;
   }
 
   registerPdfFonts();
@@ -74,11 +79,14 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       region: proposal.region,
       created_at: proposal.created_at,
       sent_at: proposal.sent_at,
+      vat_rate: proposal.vat_rate,
+      language: proposal.language,
     },
     items: (itemsRaw ?? []) as ProposalPdfItem[],
     target: target as ProposalPdfTarget,
     ownerName,
     sections,
+    templateProduct,
   }) as ReactElement<DocumentProps>;
 
   const buffer = await renderToBuffer(document);

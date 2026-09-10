@@ -108,6 +108,10 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
   const targetContactName = targetRow?.contact_name ?? targetRow?.primary_contact_name ?? null;
   const targetContactEmail = targetRow?.contact_email ?? targetRow?.primary_contact_email ?? null;
 
+  const subtotal = (items ?? []).reduce((sum, i) => sum + Number(i.line_total ?? 0), 0);
+  const vatRate = Number(proposal.vat_rate ?? 0);
+  const vatAmount = subtotal * (vatRate / 100);
+
   const editableItems: EditableProposalItem[] = (items ?? []).map((i) => ({
     id: i.id,
     product: i.product as ProductKey,
@@ -216,11 +220,21 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
           )}
         </div>
 
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-rg-line bg-rg-surface-alt p-5 text-center shadow-rg">
-          <span className="text-[10.5px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">Genel Toplam</span>
-          <span className="mt-2 font-display text-[26px] font-bold text-rg-ink">
-            {fmtMoney(proposal.total_amount, proposal.currency)}
-          </span>
+        <div className="flex flex-col justify-center gap-1.5 rounded-2xl border border-rg-line bg-rg-surface-alt p-5 shadow-rg">
+          <div className="flex items-center justify-between text-[11px] text-rg-ink-faint">
+            <span>Ara Toplam</span>
+            <span>{fmtMoney(subtotal, proposal.currency)}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-rg-ink-faint">
+            <span>KDV (%{vatRate})</span>
+            <span>{fmtMoney(vatAmount, proposal.currency)}</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between border-t border-rg-line pt-2">
+            <span className="text-[10.5px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">Genel Toplam</span>
+            <span className="font-display text-[20px] font-bold text-rg-ink">
+              {fmtMoney(proposal.total_amount, proposal.currency)}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -230,6 +244,7 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
           currency={proposal.currency}
           items={editableItems}
           priceLists={priceListsForEditor}
+          vatRate={vatRate}
         />
       ) : (
         <div className="mt-5 overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
@@ -284,6 +299,22 @@ export default async function ProposalDetailPage({ params }: { params: { id: str
               )}
             </tbody>
           </table>
+          {(items ?? []).length > 0 && (
+            <div className="flex flex-col gap-1 border-t border-rg-line bg-rg-surface-alt px-4 py-3 sm:items-end">
+              <div className="flex w-full max-w-xs items-center justify-between text-[12px] text-rg-ink-soft">
+                <span>Ara Toplam</span>
+                <span>{fmtMoney(subtotal, proposal.currency)}</span>
+              </div>
+              <div className="flex w-full max-w-xs items-center justify-between text-[12px] text-rg-ink-soft">
+                <span>KDV (%{vatRate})</span>
+                <span>{fmtMoney(vatAmount, proposal.currency)}</span>
+              </div>
+              <div className="flex w-full max-w-xs items-center justify-between border-t border-rg-line pt-1.5 text-[13.5px] font-bold text-rg-ink">
+                <span>Genel Toplam</span>
+                <span>{fmtMoney(proposal.total_amount, proposal.currency)}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
