@@ -126,7 +126,12 @@ export default async function SalesTeamPage() {
             : "Bölgendeki satış ekibi — atanan lead'leri gör, gerekirse başka bir üyeye devret."
         }
       />
-      <TeamTable members={members} stats={statsByOwner} />
+      <TeamTable
+        members={members}
+        stats={statsByOwner}
+        canManageAllRegions={isFounder}
+        callerRegion={caller?.region ?? null}
+      />
     </>
   );
 }

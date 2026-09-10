@@ -101,6 +101,7 @@ export function ProposalWizard({
   const [customDesc, setCustomDesc] = useState("");
   const [customProduct, setCustomProduct] = useState<ProductKey>("golms");
   const [customPrice, setCustomPrice] = useState("");
+  const [currencyWarning, setCurrencyWarning] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -124,7 +125,24 @@ export function ProposalWizard({
     }
   }
 
+  // Bir teklif TEK bir para biriminde tutulur (currency alanı tüm belgeye tek
+  // uygulanıyor — bkz. totals hesaplaması). Farklı para biriminden bir fiyat
+  // listesi kalemi eklenirse tutarlar sessizce USD+TRY gibi yanlış toplanırdı
+  // (bu, GOTOOLS'un hem USD hem TRY listesi olduğu için gerçek bir riskti).
+  // Bu yüzden: teklif henüz boşsa yeni kalemin para birimini teklife uygula;
+  // teklifte zaten farklı bir para biriminden kalem varsa EKLEMEYİ ENGELLE ve
+  // net bir uyarı göster.
   function addFromPriceList(pl: PriceListOption, item: PriceListOption["items"][number]) {
+    setCurrencyWarning("");
+    if (items.length > 0 && pl.currency !== currency) {
+      setCurrencyWarning(
+        `Bu kalem ${pl.currency} cinsinden ama teklif şu an ${currency} cinsinden — bir teklifte iki farklı para birimi karıştırılamaz. Bu kalemi eklemek için önce mevcut kalemleri kaldırıp teklifin para birimini ${pl.currency} yap, ya da bu kalem için ayrı bir teklif oluştur.`
+      );
+      return;
+    }
+    if (items.length === 0 && pl.currency !== currency) {
+      setCurrency(pl.currency);
+    }
     setItems((prev) => [
       ...prev,
       {
@@ -399,6 +417,12 @@ export function ProposalWizard({
                 <p className="text-[11.5px] text-rg-ink-faint">Bu üründe fiyat listesi yok.</p>
               )}
             </div>
+
+            {currencyWarning && (
+              <div className="rounded-[10px] border border-destructive/40 bg-destructive/5 p-3 text-[11.5px] text-destructive">
+                {currencyWarning}
+              </div>
+            )}
 
             <div className="rounded-[10px] border border-dashed border-rg-line p-3">
               <div className={`${labelClass} mb-2`}>Özel Kalem Ekle</div>

@@ -13,7 +13,14 @@ type PartnerProfileStub = {
   id: string;
   profile_id: string;
   company_name: string | null;
+  tax_no: string | null;
+  website: string | null;
   country: string | null;
+  address: string | null;
+  bank_name: string | null;
+  bank_account_name: string | null;
+  iban: string | null;
+  swift: string | null;
   onboarding_step: number;
   onboarding_completed_at: string | null;
   commission_rate: number | null;
@@ -63,7 +70,9 @@ export default async function PartnerAdminPage() {
   if (accountIds.length > 0) {
     const { data } = await supabase
       .from("partner_profiles")
-      .select("id, profile_id, company_name, country, onboarding_step, onboarding_completed_at, commission_rate, status, admin_note")
+      .select(
+        "id, profile_id, company_name, tax_no, website, country, address, bank_name, bank_account_name, iban, swift, onboarding_step, onboarding_completed_at, commission_rate, status, admin_note"
+      )
       .in("profile_id", accountIds);
     partnerProfiles = (data ?? []) as PartnerProfileStub[];
   }
@@ -78,7 +87,14 @@ export default async function PartnerAdminPage() {
       email: a.email,
       region: a.region,
       companyName: pp?.company_name ?? null,
+      taxNo: pp?.tax_no ?? null,
+      website: pp?.website ?? null,
       country: pp?.country ?? null,
+      address: pp?.address ?? null,
+      bankName: pp?.bank_name ?? null,
+      bankAccountName: pp?.bank_account_name ?? null,
+      iban: pp?.iban ?? null,
+      swift: pp?.swift ?? null,
       onboardingStep: pp?.onboarding_step ?? 0,
       onboardingCompleted: !!pp?.onboarding_completed_at,
       commissionRate: pp?.commission_rate ?? null,
