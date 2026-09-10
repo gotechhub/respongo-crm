@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePagination } from "@/lib/pagination";
 import { SearchInput } from "@/components/ui/search-input";
-import { TicketCreateForm, PRODUCT_LABEL, type CustomerOption } from "./ticket-form";
+import { TicketCreateForm, type CustomerOption } from "./ticket-form";
 import { TicketFilters } from "./ticket-filters";
 import { STATUS_LABEL, STATUS_CLASS, PRIORITY_LABEL, PRIORITY_CLASS } from "./status-labels";
+import { PRODUCT_LABEL } from "@/lib/product-labels";
 import type { TicketPriority, TicketStatus } from "./actions";
 
 export const dynamic = "force-dynamic";

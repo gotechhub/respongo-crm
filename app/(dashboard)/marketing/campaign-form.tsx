@@ -5,24 +5,7 @@ import { Loader2, Plus, X } from "lucide-react";
 import { REGION_LABELS_TR, type Region } from "@/lib/roles";
 import { createCampaign, type CampaignChannel, type CampaignInput } from "./actions";
 import type { ProductKey } from "../sales/proposals/actions";
-
-export const CAMPAIGN_CHANNEL_LABEL: Record<CampaignChannel, string> = {
-  google_ads: "Google Reklamları",
-  linkedin_ads: "LinkedIn Reklamları",
-  instagram_ads: "Instagram Reklamları",
-  youtube_ads: "YouTube Reklamları",
-  facebook_ads: "Meta (Facebook) Reklamları",
-  tiktok_ads: "TikTok Reklamları",
-  email: "E-posta Kampanyası",
-  content: "İçerik Pazarlaması",
-  webinar: "Webinar",
-  event: "Etkinlik",
-  referral_program: "Referans Programı",
-  partnership: "İş Ortaklığı",
-  other: "Diğer",
-};
-
-const CAMPAIGN_CHANNEL_KEYS = Object.keys(CAMPAIGN_CHANNEL_LABEL) as CampaignChannel[];
+import { CAMPAIGN_CHANNEL_LABEL, CAMPAIGN_CHANNEL_KEYS } from "@/lib/campaign-labels";
 
 const PRODUCT_LABEL: Record<ProductKey, string> = {
   golms: "GOLMS",

@@ -4,12 +4,11 @@ import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, X } from "lucide-react";
 import { createTicketFromPortal } from "../../../(dashboard)/support/actions";
-import { PRODUCT_LABEL } from "../../../(dashboard)/support/ticket-form";
+import { PRODUCT_LABEL, PRODUCT_KEYS } from "@/lib/product-labels";
 
 const inputClass =
   "rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary";
 const labelClass = "text-[11px] font-semibold uppercase tracking-[.3px] text-rg-ink-faint";
-const PRODUCT_KEYS = Object.keys(PRODUCT_LABEL);
 
 export function NewTicketForm({ customerId }: { customerId: string }) {
   const router = useRouter();

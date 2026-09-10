@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { REGION_LABELS_TR, type Region, type UserRole } from "@/lib/roles";
-import { CAMPAIGN_CHANNEL_LABEL } from "../campaign-form";
+import { CAMPAIGN_CHANNEL_LABEL } from "@/lib/campaign-labels";
 import { CampaignStatusPanel } from "./campaign-status-panel";
 import { CampaignLeadsPanel, type AttachedLead } from "./campaign-leads-panel";
 import type { CampaignChannel, CampaignInput, CampaignStatus } from "../actions";

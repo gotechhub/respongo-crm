@@ -3,15 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { createTicket, type TicketInput, type TicketPriority } from "./actions";
-
-export const PRODUCT_LABEL: Record<string, string> = {
-  golms: "GOLMS",
-  golxp: "GOLXP",
-  gocatalog: "GOCATALOG",
-  gofactory: "GOFACTORY",
-  gotools: "GOTOOLS",
-};
-const PRODUCT_KEYS = Object.keys(PRODUCT_LABEL);
+import { PRODUCT_LABEL, PRODUCT_KEYS } from "@/lib/product-labels";
 
 export const PRIORITY_LABEL: Record<TicketPriority, string> = {
   low: "Düşük",

@@ -3,17 +3,9 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { createLicense, type LicenseInput } from "./actions";
+import { PRODUCT_LABEL, PRODUCT_KEYS } from "@/lib/product-labels";
 
 const CURRENCIES = ["USD", "EUR", "TRY", "GBP"];
-
-export const PRODUCT_LABEL: Record<string, string> = {
-  golms: "GOLMS",
-  golxp: "GOLXP",
-  gocatalog: "GOCATALOG",
-  gofactory: "GOFACTORY",
-  gotools: "GOTOOLS",
-};
-const PRODUCT_KEYS = Object.keys(PRODUCT_LABEL);
 
 export const inputClass =
   "rounded-[8px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.8px] text-rg-ink outline-none focus:border-primary";

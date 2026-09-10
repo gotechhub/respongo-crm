@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
-import { PRODUCT_LABEL } from "../license-form";
+import { PRODUCT_LABEL } from "@/lib/product-labels";
 import { RenewalPanel, type RenewalRow } from "./renewal-panel";
 import type { LicenseStatus } from "../actions";
 

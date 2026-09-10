@@ -8,8 +8,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { parsePagination } from "@/lib/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { RegionFilter } from "@/components/ui/region-filter";
-import { CampaignCreateForm, CAMPAIGN_CHANNEL_LABEL } from "./campaign-form";
+import { CampaignCreateForm } from "./campaign-form";
 import type { CampaignChannel, CampaignStatus } from "./actions";
+import { CAMPAIGN_CHANNEL_LABEL } from "@/lib/campaign-labels";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

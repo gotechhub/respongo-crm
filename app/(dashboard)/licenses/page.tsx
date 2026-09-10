@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePagination } from "@/lib/pagination";
 import { SearchInput } from "@/components/ui/search-input";
-import { LicenseCreateForm, PRODUCT_LABEL, type AcceptedProposal, type CustomerOption } from "./license-form";
+import { LicenseCreateForm, type AcceptedProposal, type CustomerOption } from "./license-form";
 import type { LicenseStatus } from "./actions";
+import { PRODUCT_LABEL } from "@/lib/product-labels";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

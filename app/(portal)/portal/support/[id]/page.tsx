@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { PRODUCT_LABEL } from "../../../../(dashboard)/support/ticket-form";
+import { PRODUCT_LABEL } from "@/lib/product-labels";
 import { STATUS_LABEL, STATUS_CLASS } from "../../../../(dashboard)/support/status-labels";
 import { CustomerMessagePanel, type CustomerMessageRow } from "./customer-message-panel";
 import type { TicketStatus } from "../../../../(dashboard)/support/actions";

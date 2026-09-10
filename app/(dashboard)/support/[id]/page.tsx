@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
-import { PRODUCT_LABEL } from "../ticket-form";
+import { PRODUCT_LABEL } from "@/lib/product-labels";
 import { STATUS_LABEL, STATUS_CLASS } from "../status-labels";
 import { TicketPanel, type MessageRow, type AgentOption } from "./ticket-panel";
 import type { TicketPriority, TicketStatus } from "../actions";
