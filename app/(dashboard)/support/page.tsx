@@ -8,6 +8,8 @@ import { parsePagination } from "@/lib/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { TicketCreateForm, type CustomerOption } from "./ticket-form";
 import { TicketFilters } from "./ticket-filters";
+import { ArchiveToggleButton } from "./archive-toggle-button";
+import { InboundEmailPanel, type UnmatchedInboundEmail } from "./inbound-email-panel";
 import { STATUS_LABEL, STATUS_CLASS, PRIORITY_LABEL, PRIORITY_CLASS } from "./status-labels";
 import { PRODUCT_LABEL } from "@/lib/product-labels";
 import type { TicketPriority, TicketStatus } from "./actions";
@@ -25,6 +27,7 @@ type TicketRow = {
   assigned_to: string | null;
   last_message_at: string;
   created_at: string;
+  archived_at: string | null;
 };
 
 function fmtDate(iso: string) {
@@ -57,11 +60,12 @@ export default async function SupportPage({
   const q = typeof searchParams.q === "string" ? searchParams.q.trim() : "";
   const statusFilter = typeof searchParams.status === "string" ? (searchParams.status as TicketStatus) : "";
   const priorityFilter = typeof searchParams.priority === "string" ? (searchParams.priority as TicketPriority) : "";
+  const archiveView = searchParams.archived === "1";
 
   let query = supabase
     .from("support_tickets")
     .select(
-      "id, customer_id, subject, product, status, priority, assigned_to, last_message_at, created_at",
+      "id, customer_id, subject, product, status, priority, assigned_to, last_message_at, created_at, archived_at",
       { count: "exact" }
     )
     .order("last_message_at", { ascending: false });
@@ -69,13 +73,26 @@ export default async function SupportPage({
   if (q) query = query.ilike("subject", `%${q}%`);
   if (statusFilter) query = query.eq("status", statusFilter);
   if (priorityFilter) query = query.eq("priority", priorityFilter);
+  query = archiveView ? query.not("archived_at", "is", null) : query.is("archived_at", null);
 
-  const [{ data: tickets, count }, { data: allTickets }, { data: customerRows }, { data: agentRows }] =
+  // KPI kartları görünümden bağımsız her zaman AKTİF (arşivlenmemiş)
+  // taleplere göre hesaplanır — arşiv sekmesindeyken bile "şu an ne
+  // bekliyor" sorusuna cevap vermeye devam etsin diye.
+  const [{ data: tickets, count }, { data: allTickets }, { data: customerRows }, { data: agentRows }, { data: inboundRows }] =
     await Promise.all([
       query.range(from, to),
-      supabase.from("support_tickets").select("status, priority, assigned_to"),
+      supabase.from("support_tickets").select("status, priority, assigned_to").is("archived_at", null),
       supabase.from("customers").select("id, company_name").order("company_name", { ascending: true }).limit(500),
       supabase.from("profiles").select("id, full_name, email").in("role", ["support_agent", "founder", "region_admin"]),
+      // destek@ / support@ adreslerine gelip otomatik bir müşteriyle eşleşmeyen e-postalar —
+      // RLS (inbound_support_emails_support_select) zaten sadece support modülüne erişimi
+      // olanlara satır döner, bu yüzden burada ek bir rol kontrolüne gerek yok.
+      supabase
+        .from("inbound_support_emails")
+        .select("id, from_address, from_name, subject, body_text, region, received_at")
+        .eq("status", "unmatched")
+        .order("received_at", { ascending: false })
+        .limit(50),
     ]);
 
   const rows = (tickets ?? []) as TicketRow[];
@@ -97,7 +114,14 @@ export default async function SupportPage({
 
   return (
     <>
-      <Topbar title="Destek Merkezi" subtitle="Müşteri destek taleplerini takip et ve yanıtla." />
+      <Topbar
+        title="Destek Merkezi"
+        subtitle={
+          archiveView
+            ? "Arşivlenmiş destek talepleri — geçmişe dönük görüntüleme."
+            : "Müşteri destek taleplerini takip et ve yanıtla."
+        }
+      />
 
       <div className="mb-5 grid grid-cols-4 gap-4">
         <StatCard label="Açık Talepler" value={String(openCount)} cls="text-destructive" />
@@ -117,6 +141,11 @@ export default async function SupportPage({
         </div>
       </div>
 
+      <InboundEmailPanel
+        emails={(inboundRows ?? []) as UnmatchedInboundEmail[]}
+        customers={(customerRows ?? []) as CustomerOption[]}
+      />
+
       <TicketCreateForm customers={(customerRows ?? []) as CustomerOption[]} />
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
@@ -130,6 +159,7 @@ export default async function SupportPage({
                 <th className="px-4 py-2.5 text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">Öncelik</th>
                 <th className="px-4 py-2.5 text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">Durum</th>
                 <th className="px-4 py-2.5 text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">Son Hareket</th>
+                <th className="px-4 py-2.5 text-right text-[10.8px] font-bold uppercase tracking-[.4px] text-rg-ink-faint">&nbsp;</th>
               </tr>
             </thead>
             <tbody>
@@ -166,14 +196,19 @@ export default async function SupportPage({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-[11.5px] text-rg-ink-faint">{fmtDate(row.last_message_at)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <ArchiveToggleButton ticketId={row.id} isArchived={!!row.archived_at} />
+                  </td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-[12.5px] text-rg-ink-faint">
-                    {q || statusFilter || priorityFilter
-                      ? "Filtreyle eşleşen destek talebi yok."
-                      : "Henüz destek talebi yok — yukarıdan yeni bir talep açabilirsin."}
+                  <td colSpan={7} className="px-4 py-8 text-center text-[12.5px] text-rg-ink-faint">
+                    {archiveView
+                      ? "Arşivde henüz talep yok."
+                      : q || statusFilter || priorityFilter
+                        ? "Filtreyle eşleşen destek talebi yok."
+                        : "Henüz destek talebi yok — yukarıdan yeni bir talep açabilirsin."}
                   </td>
                 </tr>
               )}

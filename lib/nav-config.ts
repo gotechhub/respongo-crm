@@ -97,6 +97,20 @@ export const navGroups: NavGroup[] = [
           { label: "Teklif Oluştur", href: "/sales/proposals/new", icon: FileText, phase: "beta" },
           { label: "Teklif Şablonları", href: "/sales/proposal-templates", icon: BookOpen, phase: "beta" },
           { label: "Fiyat Listeleri", href: "/sales/price-lists", icon: Wallet, phase: "beta" },
+          // DERS (2026-09-11): eskiden "Müşteri Talepleri" adıyla "Destek"
+          // grubunda, "Destek Merkezi"nin YANINDA duruyordu — bu, iki farklı
+          // KAVRAMI (arıza/destek talebi vs. satın alım/yenileme talebi) aynı
+          // şemsiye altında gösterip kullanıcının "bunlar neden ayrı?" diye
+          // sormasına yol açtı. Bu bir müşterinin TİCARİ isteğidir (yeni satın
+          // alım, lisans yenileme, yeni ürün/proje/hizmet talebi) — destek
+          // arızası değil — bu yüzden Teklifler'in yanına, adı netleştirilerek
+          // taşındı.
+          {
+            label: "Satın Alım & Yenileme Talepleri",
+            href: "/customer-requests",
+            icon: Inbox,
+            phase: "beta",
+          },
         ],
       },
       {
@@ -114,10 +128,7 @@ export const navGroups: NavGroup[] = [
     icon: LifeBuoy,
     subgroups: [
       {
-        items: [
-          { label: "Destek Merkezi", href: "/support", icon: LifeBuoy, phase: "beta" },
-          { label: "Müşteri Talepleri", href: "/customer-requests", icon: Inbox, phase: "beta" },
-        ],
+        items: [{ label: "Destek Merkezi", href: "/support", icon: LifeBuoy, phase: "beta" }],
       },
     ],
   },

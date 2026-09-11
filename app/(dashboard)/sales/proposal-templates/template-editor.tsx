@@ -3,12 +3,86 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Plus } from "lucide-react";
+import { Copy, Eye, Maximize2, Plus, X } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { PRODUCT_LOGO } from "@/lib/product-logos";
 import { cloneProposalTemplate, createCustomTemplateSection } from "./actions";
 import { SectionWorkspace, isSectionComplete, sectionLabel, type V2Template } from "./v2-templates-panel";
 import { TemplatePreview } from "./template-preview";
+
+/**
+ * Tam ekran önizleme katmanı — kullanıcının açık isteği: "ön izleme tam ekran
+ * olması lazım ... burası çok karmaşık". Eskiden önizleme sabit 420px'lik bir
+ * sütuna sıkıştırılmıştı (TemplatePreview'ın kendi "kağıt" genişliği 760px'e
+ * ayarlıydı — sığdırmak için küçültülüyor, karmaşık/dar görünüyordu). Burada
+ * artık ekranın neredeyse tamamını kaplayan bir katman içinde, "kağıt"
+ * kendi doğal genişliğinde, rahatça nefes alarak gösteriliyor.
+ */
+function FullscreenPreview({
+  template,
+  language,
+  onLanguageChange,
+  onClose,
+}: {
+  template: V2Template;
+  language: "tr" | "en";
+  onLanguageChange: (lang: "tr" | "en") => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/70 p-3 backdrop-blur-sm sm:p-6">
+      <div className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col overflow-hidden rounded-2xl bg-rg-surface shadow-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rg-line px-5 py-3.5">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-primary" />
+            <div>
+              <p className="text-[13px] font-bold text-rg-ink">Tam ekran önizleme</p>
+              <p className="text-[11px] text-rg-ink-faint">{template.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {(["tr", "en"] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => onLanguageChange(lang)}
+                className={`rounded-lg px-3 py-1.5 text-[11.5px] font-semibold ${
+                  language === lang ? "bg-primary text-white" : "bg-rg-surface-alt text-rg-ink-soft hover:bg-rg-line"
+                }`}
+              >
+                {lang === "tr" ? "Türkçe" : "English"}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Önizlemeyi kapat"
+              className="ml-1 grid h-8 w-8 place-items-center rounded-lg border border-rg-line text-rg-ink-soft hover:bg-rg-surface-alt"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <TemplatePreview template={template} language={language} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const PRODUCT_LABEL: Record<string, string> = { golms: "GOLMS", golxp: "GOLXP", gocatalog: "GOCATALOG", gofactory: "GOFACTORY", gotools: "GOTOOLS" };
 const inputClass = "w-full rounded-lg border border-rg-line bg-rg-surface px-3 py-2 text-[13px] text-rg-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
@@ -36,6 +110,7 @@ export function TemplateDocumentEditor({
   const [customTitleTr, setCustomTitleTr] = useState("");
   const [customTitleEn, setCustomTitleEn] = useState("");
   const [previewLanguage, setPreviewLanguage] = useState<"tr" | "en">("tr");
+  const [fullscreenPreview, setFullscreenPreview] = useState(false);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
 
@@ -126,7 +201,13 @@ export function TemplateDocumentEditor({
 
       {message && <p className="text-[12px] text-rg-ink-soft">{message}</p>}
 
-      <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)_420px]">
+      {/* V4 (2026-09-11): Kullanıcının açık isteği — "ön izleme alanları çok dar ve burası çok
+          karmaşık ... ön izleme tam ekran olması lazım ön izleme buton olsun düzenle yanında".
+          Eskiden sağda sabit 420px'lik, kendi 760px'lik "kağıdını" zorla küçülten sıkışık bir
+          önizleme sütunu vardı — hem dar hem de üç sütunlu düzeni karmaşıklaştırıyordu. Artık
+          düzen SADECE iki sütun (bölüm menüsü + düzenleyici); önizleme, düzenleyicinin hemen
+          yanındaki "Tam Ekran Önizle" butonuyla açılan ayrı bir tam ekran katmanında gösteriliyor. */}
+      <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
         {/* SOL — belge bölümlerinin dikey menüsü. Artık yatay kaydırmalı bir şerit değil; 8 bölümün
             hepsi her zaman aynı anda görünür, tamamlanma durumu rozetle işaretlenir. */}
         <nav className="h-max space-y-1 rounded-2xl border border-rg-line bg-rg-surface p-2 xl:sticky xl:top-4">
@@ -182,8 +263,23 @@ export function TemplateDocumentEditor({
           )}
         </nav>
 
-        {/* ORTA — seçili bölümün içerik düzenleyicisi; TR ve EN aynı formda yan yana */}
-        <div className="min-w-0">
+        {/* ORTA — seçili bölümün içerik düzenleyicisi; TR ve EN aynı formda yan yana. "Tam Ekran
+            Önizle" butonu düzenleme alanının HEMEN ÜSTÜNDE, kullanıcının istediği gibi düzenle
+            alanının yanında duruyor. */}
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-rg-line bg-rg-surface px-4 py-2.5">
+            <span className="text-[11.5px] font-semibold text-rg-ink-soft">
+              Düzenlenen bölüm: <span className="text-rg-ink">{section ? sectionLabel(section) : "—"}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setFullscreenPreview(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[12px] font-bold text-white hover:opacity-90"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+              Tam Ekran Önizle
+            </button>
+          </div>
           {section && (
             <SectionWorkspace
               key={section.id}
@@ -193,27 +289,16 @@ export function TemplateDocumentEditor({
             />
           )}
         </div>
-
-        {/* SAĞ — müşterinin göreceği tam belge önizlemesi, PDF ile birebir aynı yapı. Şablon
-            içeriği artık her iki dili birden taşıdığı için önizleme dili burada bağımsız seçilir. */}
-        <div className="xl:sticky xl:top-4 xl:max-h-[calc(100vh-96px)] xl:overflow-y-auto">
-          <div className="mb-2 flex justify-end gap-1.5">
-            {(["tr", "en"] as const).map((lang) => (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => setPreviewLanguage(lang)}
-                className={`rounded-lg px-3 py-1.5 text-[11.5px] font-semibold ${
-                  previewLanguage === lang ? "bg-primary text-white" : "bg-rg-surface-alt text-rg-ink-soft hover:bg-rg-line"
-                }`}
-              >
-                {lang === "tr" ? "Türkçe önizleme" : "English preview"}
-              </button>
-            ))}
-          </div>
-          <TemplatePreview template={template} language={previewLanguage} />
-        </div>
       </div>
+
+      {fullscreenPreview && (
+        <FullscreenPreview
+          template={template}
+          language={previewLanguage}
+          onLanguageChange={setPreviewLanguage}
+          onClose={() => setFullscreenPreview(false)}
+        />
+      )}
     </div>
   );
 }

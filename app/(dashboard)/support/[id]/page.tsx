@@ -5,6 +5,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_LABEL } from "@/lib/product-labels";
 import { STATUS_LABEL, STATUS_CLASS } from "../status-labels";
+import { ArchiveToggleButton } from "../archive-toggle-button";
 import { TicketPanel, type MessageRow, type AgentOption } from "./ticket-panel";
 import type { TicketPriority, TicketStatus } from "../actions";
 
@@ -72,10 +73,18 @@ export default async function SupportTicketDetailPage({ params }: { params: { id
       </Link>
       <Topbar title={ticket.subject} subtitle={customer?.company_name ?? "Destek talebi"} />
 
-      <div className="mb-5 flex items-center gap-2">
-        <span className={"inline-flex items-center rounded-full px-[10px] py-1 text-[11px] font-bold " + STATUS_CLASS[status]}>
-          {STATUS_LABEL[status]}
-        </span>
+      <div className="mb-5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className={"inline-flex items-center rounded-full px-[10px] py-1 text-[11px] font-bold " + STATUS_CLASS[status]}>
+            {STATUS_LABEL[status]}
+          </span>
+          {ticket.archived_at && (
+            <span className="inline-flex items-center rounded-full bg-rg-surface-alt px-[10px] py-1 text-[11px] font-bold text-rg-ink-faint">
+              Arşivlendi
+            </span>
+          )}
+        </div>
+        <ArchiveToggleButton ticketId={ticket.id} isArchived={!!ticket.archived_at} size="md" />
       </div>
 
       <div className="grid grid-cols-3 gap-5">

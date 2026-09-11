@@ -40,19 +40,33 @@ export default async function TasksPage() {
   const tasks = (tasksRaw ?? []) as unknown as TaskWithProject[];
   const taskIds = tasks.map((t) => t.id);
 
-  const [{ data: assigneeRows }, { data: subtaskRows }, { data: customerRows }] = await Promise.all([
-    taskIds.length
-      ? supabase.from("task_assignees").select("task_id, profile_id, profiles(id, full_name, email)").in("task_id", taskIds)
-      : Promise.resolve({ data: [] }),
-    taskIds.length
-      ? supabase
-          .from("subtasks")
-          .select("id, task_id, title, is_done, assignee_id, due_date")
-          .in("task_id", taskIds)
-          .order("created_at", { ascending: true })
-      : Promise.resolve({ data: [] }),
-    supabase.from("customers").select("id, company_name"),
-  ]);
+  const [{ data: assigneeRows }, { data: subtaskRows }, { data: customerRows }, { data: projectRows }, { data: teamRows }] =
+    await Promise.all([
+      taskIds.length
+        ? supabase.from("task_assignees").select("task_id, profile_id, profiles(id, full_name, email)").in("task_id", taskIds)
+        : Promise.resolve({ data: [] }),
+      taskIds.length
+        ? supabase
+            .from("subtasks")
+            .select("id, task_id, title, is_done, assignee_id, due_date")
+            .in("task_id", taskIds)
+            .order("created_at", { ascending: true })
+        : Promise.resolve({ data: [] }),
+      supabase.from("customers").select("id, company_name"),
+      // "Yeni Görev" formundaki proje seçimi — RLS (tasks_project_owner /
+      // tasks_founder_all) zaten sadece sahibi olunan (ya da founder/
+      // region_admin için tüm) projeleri döndürür, bu yüzden burada ekstra
+      // filtreye gerek yok: liste zaten "gerçekten görev açabileceğin
+      // projeler" ile sınırlı geliyor.
+      supabase.from("projects").select("id, name").order("name", { ascending: true }),
+      // Atama seçici için ekip roster'ı — müşteri/partner rolleri hariç,
+      // gerçekten göreve atanabilecek iç ekip + freelancer/proje üyesi rolleri.
+      supabase
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .in("role", ["founder", "region_admin", "sales_inhouse", "project_member", "freelancer", "support_agent", "marketing", "finance"])
+        .order("full_name", { ascending: true }),
+    ]);
 
   const customerNames: Record<string, string> = {};
   (customerRows ?? []).forEach((c) => {
@@ -69,6 +83,11 @@ export default async function TasksPage() {
   }) as AssigneeLite[];
 
   const subtasks = (subtaskRows ?? []) as SubtaskLite[];
+  const projects = (projectRows ?? []) as { id: string; name: string }[];
+  const teamMembers = ((teamRows ?? []) as { id: string; full_name: string | null; email: string }[]).map((p) => ({
+    id: p.id,
+    name: p.full_name || p.email,
+  }));
 
   return (
     <>
@@ -76,7 +95,14 @@ export default async function TasksPage() {
         title={isManager ? "Tüm Görevler" : "Görevlerim"}
         subtitle="Tüm projelerdeki görevler tek listede — proje bazlı ayrım için Proje & Görev › Projeler'e bak."
       />
-      <TasksView tasks={tasks} assignees={assignees} subtasks={subtasks} customerNames={customerNames} />
+      <TasksView
+        tasks={tasks}
+        assignees={assignees}
+        subtasks={subtasks}
+        customerNames={customerNames}
+        projects={projects}
+        teamMembers={teamMembers}
+      />
     </>
   );
 }

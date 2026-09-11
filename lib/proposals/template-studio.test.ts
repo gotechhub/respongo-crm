@@ -7,7 +7,14 @@ describe("proposal template studio blueprint", () => {
     expect(sections).toHaveLength(8);
     expect(sections.map((section) => section.sort_order)).toEqual([10, 20, 30, 40, 50, 60, 70, 80]);
     expect(sections.filter((section) => section.section_type === "legal_terms").map((section) => section.legal_region)).toEqual(["tr", "us"]);
-    expect(sections.find((section) => section.section_type === "scope")?.content).toEqual({ included_tr: [], included_en: [], excluded_tr: [], excluded_en: [] });
+    // V4 (2026-09-11): kapsam artık respongo.com'dan alınan gerçek ürün bilgisiyle önceden
+    // doldurulur (kullanıcı isteği: "daha kaliteli gerçekçi ve daha detaylı olsun") — eskiden
+    // dört boş dizi olan bu içerik artık her dilde en az bir gerçek madde taşımalı.
+    const scopeContent = sections.find((section) => section.section_type === "scope")?.content as Record<string, unknown[]>;
+    expect(scopeContent.included_tr.length).toBeGreaterThan(0);
+    expect(scopeContent.included_en.length).toBeGreaterThan(0);
+    expect(scopeContent.excluded_tr.length).toBeGreaterThan(0);
+    expect(scopeContent.excluded_en.length).toBeGreaterThan(0);
   });
   it("fills both languages on the same row — no more per-language forking", () => {
     const sections = createStudioSections("gofactory");

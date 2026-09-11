@@ -13,12 +13,16 @@ import {
   Receipt,
   KeyRound,
   LifeBuoy,
+  DollarSign,
+  Euro,
+  Landmark,
 } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { createClient } from "@/lib/supabase/server";
 import { REGION_LABELS_TR, type Region, type UserRole } from "@/lib/roles";
 import { PRODUCT_LABEL, PRODUCT_KEYS } from "@/lib/product-labels";
+import { getTcmbRates, type TcmbRates } from "@/lib/tcmb-rates";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -81,6 +85,52 @@ function sumByCurrency(rows: { amount: number; currency: string }[]) {
 
 function daysUntil(endDate: string, todayIso: string) {
   return Math.round((new Date(endDate).getTime() - new Date(todayIso).getTime()) / 86400000);
+}
+
+function fmtTcmbDate(d: string | null) {
+  if (!d) return null;
+  // TCMB tarih formatı "11.09.2026" — olduğu gibi gösterilebilir, ekstra
+  // parse gerekmiyor.
+  return d;
+}
+
+// Kullanıcı isteği: "dashboard alanında merkez bankası dolar ve euro
+// görebilelim anlık olarak". TCMB günlük resmi kur akışı ağdan ulaşılamazsa
+// (ya da TCMB tarafı geçiciyse) sessizce daralan, dashboard'un geri kalanını
+// asla bloklamayan ince bir şerit — bkz. lib/tcmb-rates.ts.
+function TcmbRatesBar({ rates }: { rates: TcmbRates }) {
+  const hasAny = rates.usd !== null || rates.eur !== null;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-rg-line bg-rg-surface px-5 py-3 shadow-rg">
+      <div className="flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[.3px] text-rg-ink-faint">
+        <Landmark className="h-3.5 w-3.5" />
+        TCMB Döviz Kuru
+      </div>
+      {hasAny ? (
+        <>
+          <div className="flex items-center gap-1.5 rounded-xl bg-rg-surface-alt px-3 py-1.5">
+            <DollarSign className="h-3.5 w-3.5 text-[#238F00]" />
+            <span className="text-[13px] font-bold text-rg-ink">
+              {rates.usd !== null ? rates.usd.toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : "—"}
+            </span>
+            <span className="text-[11px] text-rg-ink-faint">TRY</span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-xl bg-rg-surface-alt px-3 py-1.5">
+            <Euro className="h-3.5 w-3.5 text-[#5E17EB]" />
+            <span className="text-[13px] font-bold text-rg-ink">
+              {rates.eur !== null ? rates.eur.toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : "—"}
+            </span>
+            <span className="text-[11px] text-rg-ink-faint">TRY</span>
+          </div>
+          {rates.date && (
+            <span className="text-[11px] text-rg-ink-faint">TCMB satış kuru · {fmtTcmbDate(rates.date)}</span>
+          )}
+        </>
+      ) : (
+        <span className="text-[12px] text-rg-ink-faint">TCMB kuru şu anda alınamadı — birazdan tekrar denenecek.</span>
+      )}
+    </div>
+  );
 }
 
 type LeadRow = {
@@ -214,7 +264,7 @@ export default async function DashboardPage() {
 
   const emptyResult = Promise.resolve({ data: [] as unknown[] });
 
-  const [companiesRes, contactsRes, poolRes, leadsRes, customersRes, invoiceStatsRes, licenseStatsRes, ticketStatsRes, productRevenueRes] =
+  const [companiesRes, contactsRes, poolRes, leadsRes, customersRes, invoiceStatsRes, licenseStatsRes, ticketStatsRes, productRevenueRes, tcmbRates] =
     await Promise.all([
       applyRegion(supabase.from("companies").select("id, name, region, created_at")).limit(1000),
       supabase.from("contacts").select("id, first_name, last_name, created_at").limit(1000),
@@ -243,6 +293,12 @@ export default async function DashboardPage() {
             .select("product, line_total, proposals!inner(status, currency)")
             .eq("proposals.status", "accepted")
         : emptyResult,
+      // TCMB (Merkez Bankası) USD/EUR kuru — kullanıcı isteği: "dashboard
+      // alanında merkez bankası dolar ve euro görebilelim anlık olarak".
+      // getTcmbRates() hiçbir zaman reddetmez (ağ hatasında bile
+      // {usd:null,eur:null,date:null} döner), bu yüzden diğer sorgularla
+      // aynı Promise.all içine güvenle eklenebiliyor.
+      getTcmbRates(),
     ]);
 
   const companies = (companiesRes.data ?? []) as CompanyRow[];
@@ -444,6 +500,8 @@ export default async function DashboardPage() {
             : `${scopeLabel} — tek ekranda.`
         }
       />
+
+      <TcmbRatesBar rates={tcmbRates} />
 
       <div className="grid grid-cols-4 gap-4">
         <KpiCard

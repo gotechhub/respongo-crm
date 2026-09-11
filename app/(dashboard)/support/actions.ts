@@ -179,6 +179,140 @@ export async function createTicketFromPortal(
   return { ok: true };
 }
 
+// ----------------------------------------------------------------------------
+// Arşivleme — durumdan (resolved/closed) BAĞIMSIZ ayrı bir alan
+// (archived_at). Kullanıcı isteği: eski/kapanmış talepler ana listeyi
+// kalabalıklaştırmasın ama geçmişe dönük her zaman görüntülenebilsin.
+// ----------------------------------------------------------------------------
+export async function archiveTicket(id: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("support_tickets")
+    .update({ archived_at: new Date().toISOString() }, { count: "exact" })
+    .eq("id", id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu talebi arşivleme yetkin yok." };
+  }
+
+  revalidatePath("/support");
+  revalidatePath(`/support/${id}`);
+  return { ok: true };
+}
+
+export async function unarchiveTicket(id: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error, count } = await supabase
+    .from("support_tickets")
+    .update({ archived_at: null }, { count: "exact" })
+    .eq("id", id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu talebi arşivden çıkarma yetkin yok." };
+  }
+
+  revalidatePath("/support");
+  revalidatePath(`/support/${id}`);
+  return { ok: true };
+}
+
+// ----------------------------------------------------------------------------
+// Gelen e-posta eşleştirme — destek@ / support@'a düşen ama otomatik bir
+// müşteriyle eşleşmeyen e-postalar (inbound_support_emails, status='unmatched')
+// burada elle bir müşteriye bağlanır ve yeni bir ticket olarak açılır. Bkz.
+// app/api/webhooks/inbound-email/route.ts — customer_id NOT NULL kısıtı
+// yüzünden eşleşmeyen e-postalar otomatik ticket'a dönüştürülemiyor, bu ekran
+// o boşluğu dolduruyor.
+// ----------------------------------------------------------------------------
+export async function convertInboundEmailToTicket(inboundId: string, customerId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Oturum bulunamadı." };
+  }
+  if (!customerId) {
+    return { ok: false, error: "Müşteri seçimi zorunlu." };
+  }
+
+  const { data: inbound, error: inboundError } = await supabase
+    .from("inbound_support_emails")
+    .select("id, subject, body_text, region, status")
+    .eq("id", inboundId)
+    .single();
+  if (inboundError || !inbound) {
+    return { ok: false, error: "Gelen e-posta bulunamadı." };
+  }
+  if (inbound.status !== "unmatched") {
+    return { ok: false, error: "Bu e-posta zaten işlenmiş." };
+  }
+
+  const { data: ticket, error: ticketError } = await supabase
+    .from("support_tickets")
+    .insert({
+      customer_id: customerId,
+      subject: inbound.subject?.trim() || (inbound.region === "tr" ? "Gelen e-posta (konu yok)" : "Incoming email (no subject)"),
+      region: inbound.region,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (ticketError || !ticket) {
+    return { ok: false, error: ticketError?.message ?? "Talep oluşturulamadı." };
+  }
+
+  if (inbound.body_text) {
+    await supabase.from("support_ticket_messages").insert({ ticket_id: ticket.id, body: inbound.body_text, is_internal_note: false });
+  }
+
+  const { error: updateError } = await supabase
+    .from("inbound_support_emails")
+    .update({
+      status: "converted",
+      matched_customer_id: customerId,
+      matched_ticket_id: ticket.id,
+      converted_at: new Date().toISOString(),
+      converted_by: user.id,
+    })
+    .eq("id", inboundId);
+  if (updateError) {
+    return { ok: false, error: updateError.message };
+  }
+
+  revalidatePath("/support");
+  revalidatePath(`/support/${ticket.id}`);
+  return { ok: true };
+}
+
+export async function ignoreInboundEmail(inboundId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error, count } = await supabase
+    .from("inbound_support_emails")
+    .update({ status: "ignored", converted_at: new Date().toISOString(), converted_by: user?.id ?? null }, { count: "exact" })
+    .eq("id", inboundId)
+    .eq("status", "unmatched");
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!count) {
+    return { ok: false, error: "Bu e-postayı yoksayma yetkin yok ya da zaten işlenmiş." };
+  }
+
+  revalidatePath("/support");
+  return { ok: true };
+}
+
 export async function closeTicketFromPortal(id: string): Promise<ActionResult> {
   const supabase = createClient();
   const { error, count } = await supabase

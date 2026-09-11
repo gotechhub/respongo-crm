@@ -43,20 +43,99 @@ const titles: Record<string, { tr: string; en: string }> = {
   signature: { tr: "Onay", en: "Acceptance" },
 };
 
+// V4 (2026-09-11): Kullanıcının açık isteği — "teklif şablonlarını daha kaliteli yap ... daha
+// kaliteli gerçekçi ve daha detaylı olsun" — respongo.com/tr ve /en'den alınan GERÇEK ürün
+// tanımları, öne çıkan özellikler ve şirket rakamları (17+ yıl, 400+ kurum, 3.000+ proje,
+// 5M+ kullanıcı, 15+ ülke) burada her ürün için ayrı ayrı işleniyor. Eskiden tek satırlık
+// jenerik bir cümle + tamamen boş kapsam listeleri vardı; artık her yeni/kopyalanan şablon
+// gerçekçi, dolu bir ön izlemeyle başlıyor (kullanıcı yine de dilediği gibi düzenleyebilir).
+type ProposalCopy = {
+  coverTr: string; coverEn: string;
+  productTr: string; productEn: string;
+  includedTr: string[]; includedEn: string[];
+  excludedTr: string[]; excludedEn: string[];
+};
+
+type ProposalCopyKey = "golms" | "golxp" | "gocatalog" | "gofactory" | "gotools" | "general";
+
+const PROPOSAL_COPY: Record<ProposalCopyKey, ProposalCopy> = {
+  golms: {
+    coverTr: "Respongo'nun 17+ yıllık kurumsal öğrenme deneyimiyle kurulan GOLMS Kurumsal Öğrenme Platformu, eğitim operasyonunuzu atama, takip, sertifikasyon ve raporlamayla tek merkezden yönetmenizi sağlar. Bugün 400'den fazla kurumun ve 5 milyondan fazla kullanıcının güvendiği aynı sistemi kurumunuza özel olarak tasarlıyoruz.",
+    coverEn: "Built on Respongo's 17+ years of enterprise learning experience, the GOLMS Learning Management Platform lets you manage assignments, tracking, certification and reporting from a single hub — the same system trusted by 400+ organisations and 5M+ users worldwide, tailored to yours.",
+    productTr: "GOLMS; yetkinlik, uyum (compliance) ve tamamlama takibini tek panelde birleştirir. SSO, İK/HRIS sistemleri, Microsoft Teams ve Zoom ile hazır entegrasyonlar sunar; çevrimdışı kullanılabilen mobil öğrenme desteğiyle sahadaki ekipler de eğitim operasyonunun dışında kalmaz. Amaç: eğitim yönetiminin manuel iş yükünü azaltıp raporlamayı gerçek zamanlı hale getirmek.",
+    productEn: "GOLMS brings competency, compliance and completion tracking together on a single dashboard. It ships with ready SSO, HRIS, Microsoft Teams and Zoom integrations, plus offline-capable mobile learning so field teams stay covered. The goal: less manual overhead running training operations, and real-time reporting instead of spreadsheets.",
+    includedTr: ["Kurumsal yapı ve rol/departman tanımlarının GOLMS'e aktarılması", "SSO, HRIS, Microsoft Teams ve Zoom entegrasyon kurulumu", "Yönetici ve içerik sorumlusu eğitimi", "Canlıya geçiş ve ilk 30 gün yerinde destek"],
+    includedEn: ["Migrating your organisational structure and role/department definitions into GOLMS", "SSO, HRIS, Microsoft Teams and Zoom integration setup", "Administrator and content-owner training", "Go-live and 30 days of hands-on support"],
+    excludedTr: ["Kapsam dışı özel entegrasyon geliştirmeleri", "Üçüncü taraf lisans bedelleri (SSO sağlayıcı, HRIS vb.)"],
+    excludedEn: ["Custom integration development outside this scope", "Third-party licence fees (SSO provider, HRIS, etc.)"],
+  },
+  golxp: {
+    coverTr: "GOLXP Öğrenme Deneyimi Platformu, eğitimi bir zorunluluktan bir alışkanlığa dönüştürür: her çalışan, rolüne, hedeflerine ve ilgi alanlarına göre kişiselleştirilmiş kendi öğrenme akışını ve beceri haritasını görür. Respongo'nun 5 milyondan fazla kullanıcıya ulaşan platform deneyimini kurumunuza taşıyoruz.",
+    coverEn: "The GOLXP Learning Experience Platform turns training from an obligation into a habit: every employee gets a personalised learning flow and skill map based on their role, goals and interests. We bring Respongo's platform experience — already reaching 5M+ users — to your organisation.",
+    productTr: "GOLXP; yapay zekâ destekli, beceri odaklı içerik keşfi ile çalışana rolüne ve hedeflerine uygun önerileri otomatik sunar. Yetkinlik açığı görünürlüğü, yöneticilerin ekip bazında gelişim ihtiyacını netleştirmesini sağlarken; kullanıcı üretimi içerik ve sosyal öğrenme özellikleri, bilgi paylaşımını LMS'in ötesine taşır.",
+    productEn: "GOLXP uses AI-powered, skills-based content discovery to automatically surface recommendations matched to each employee's role and goals. Skill-gap visibility gives managers a clear view of team-level development needs, while user-generated content and social learning extend knowledge-sharing beyond the LMS.",
+    includedTr: ["Rol ve hedef bazlı öğrenme akışı kurgusu", "Yapay zekâ destekli içerik önerisi motorunun devreye alınması", "Yetkinlik haritası ve beceri açığı analizi kurulumu", "Yönetici paneli eğitimi ve canlı destek"],
+    includedEn: ["Role- and goal-based learning flow configuration", "Activating the AI-powered content recommendation engine", "Skill map and skill-gap analysis setup", "Manager dashboard training and live support"],
+    excludedTr: ["Özel içerik üretimi (GOFACTORY kapsamındadır)", "Üçüncü taraf içerik lisans bedelleri"],
+    excludedEn: ["Custom content production (covered separately under GOFACTORY)", "Third-party content licence fees"],
+  },
+  gocatalog: {
+    coverTr: "GOCATALOG ile beklemeden başlıyorsunuz: Respongo, isEazy Skills, Cegos, Udemy Business ve LinkedIn Learning gibi ortaklardan derlenen, 22'den fazla dilde güncel bir hazır eğitim kütüphanesine anında erişim. 400'den fazla kurumun tercih ettiği içerik ekosistemini kurumunuza açıyoruz.",
+    coverEn: "With GOCATALOG you start without waiting: instant access to an up-to-date, ready-to-use training library spanning 22+ languages, curated from partners including Respongo, isEazy Skills, Cegos, Udemy Business and LinkedIn Learning — the same content ecosystem chosen by 400+ organisations.",
+    productTr: "GOCATALOG, kurumunuzun kendi özel içerik üretimini beklemeden eğitime başlamasını sağlar. 22'den fazla dilde, düzenli güncellenen bir kütüphaneyle departman ve rol bazlı atama yapabilir; ilerleyen dönemde GOFACTORY ile üretilecek kuruma özel içerikle kütüphaneyi tamamlayabilirsiniz.",
+    productEn: "GOCATALOG lets your organisation start training immediately, without waiting on custom content production. With a regularly refreshed library spanning 22+ languages, you can assign by department and role — and later complement it with bespoke content produced through GOFACTORY.",
+    includedTr: ["22+ dilde hazır kütüphaneye erişim tanımlama", "Departman/rol bazlı atama kurgusu", "Kullanım ve tamamlama raporlama panelinin devreye alınması", "İlk 90 gün kullanım desteği"],
+    includedEn: ["Provisioning access to the 22+ language ready-made library", "Department/role-based assignment setup", "Activating the usage and completion reporting dashboard", "90 days of onboarding support"],
+    excludedTr: ["Kurum içi özel içerik üretimi", "GOLMS/GOLXP dışında üçüncü taraf platform entegrasyonu"],
+    excludedEn: ["In-house custom content production", "Third-party platform integrations outside GOLMS/GOLXP"],
+  },
+  gofactory: {
+    coverTr: "GOFACTORY ile kuruma özel içerik üretiyoruz: sistemli, ölçülebilir ve markanıza birebir. Öğrenme tasarımından 2D/3D animasyona, canlı çekimden VR/360° deneyimlere kadar uçtan uca prodüksiyonu, SCORM/xAPI standartlarında paketleyerek teslim ediyoruz — 3.000'den fazla tamamlanmış projenin deneyimiyle.",
+    coverEn: "GOFACTORY produces content tailored to your organisation — systematic, measurable and true to your brand. From learning design to 2D/3D animation, live-action and VR/360° experiences, we deliver end-to-end production packaged to SCORM/xAPI standards, backed by 3,000+ completed projects.",
+    productTr: "GOFACTORY ekibi, öğrenme tasarımı uzmanlığını kurumunuzun marka diliyle birleştirir: senaryo ve storyboard aşamasından, 2D/3D animasyon, canlı çekim ve VR/360° deneyimlere kadar geniş bir prodüksiyon yelpazesi sunar. Tüm çıktılar SCORM/xAPI paketlenerek GOLMS veya mevcut sisteminize sorunsuz entegre edilir.",
+    productEn: "The GOFACTORY team pairs learning-design expertise with your brand's voice, offering a full production range — from script and storyboard through 2D/3D animation, live-action and VR/360° experiences. Every deliverable is SCORM/xAPI packaged for seamless integration with GOLMS or your existing system.",
+    includedTr: ["İçerik keşif ve öğrenme tasarımı çalıştayı", "Senaryo, storyboard ve görsel tasarım", "SCORM/xAPI paketleme ve kalite kontrolü", "1 revizyon turu"],
+    includedEn: ["Discovery and learning-design workshop", "Script, storyboard and visual design", "SCORM/xAPI packaging and QA", "One round of revisions"],
+    excludedTr: ["3D/VR prodüksiyon (talep halinde ayrı teklif kapsamına eklenir)", "Seslendirme/dublaj için üçüncü taraf stüdyo bedelleri"],
+    excludedEn: ["3D/VR production (added under a separate scope on request)", "Third-party voice-over/dubbing studio fees"],
+  },
+  gotools: {
+    coverTr: "GOTOOLS ile kurum içi içerik üretimini dış bağımlılık olmadan hızlandırıyorsunuz. Craft ve isEazy Author gibi bulut tabanlı yazarlık araçlarıyla ekibiniz, kurumsal şablonlar ve marka kiti üzerinden hızlı, tutarlı içerik üretip anında güncelleyebilir.",
+    coverEn: "GOTOOLS lets you accelerate in-house content production without external dependencies. With cloud-based authoring tools like Craft and isEazy Author, your team can produce fast, consistent content on corporate templates and a brand kit — and update it instantly.",
+    productTr: "GOTOOLS; Craft ve isEazy Author bulut tabanlı yazarlık araçlarını, kurumunuza özel şablonlar ve marka kitiyle birlikte devreye alır. İçerik ekibiniz dış ajansa bağımlı kalmadan üretim yapar, güncellemeleri dakikalar içinde yayına alır ve marka tutarlılığını her modülde korur.",
+    productEn: "GOTOOLS deploys the Craft and isEazy Author cloud authoring tools together with templates and a brand kit built for your organisation. Your content team produces without relying on external agencies, ships updates in minutes, and keeps brand consistency across every module.",
+    includedTr: ["Craft / isEazy Author lisanslarının kurulumu", "Kurumsal şablon ve marka kiti tanımlama", "İçerik ekibi için yazarlık eğitimi", "İlk 60 gün teknik destek"],
+    includedEn: ["Craft / isEazy Author licence setup", "Corporate template and brand kit configuration", "Authoring training for your content team", "60 days of technical support"],
+    excludedTr: ["Kurum içi ekip tarafından üretilecek içeriklerin kendisi", "Üçüncü taraf stok görsel/video lisansları"],
+    excludedEn: ["The content itself, produced by your in-house team", "Third-party stock image/video licences"],
+  },
+  general: {
+    coverTr: "Respongo, 17+ yıllık uzmanlığı, 400'den fazla kurumsal müşterisi ve 5 milyondan fazla kullanıcıya ulaşan öğrenme ekosistemiyle içerik üretimini, teknoloji platformlarını ve danışmanlığı tek çatı altında birleştirir. Bu teklif, kurumunuzun ihtiyacına en uygun Respongo çözümünü/çözümlerini bir araya getirir.",
+    coverEn: "With 17+ years of expertise, 400+ corporate clients and a learning ecosystem reaching 5M+ users, Respongo brings content production, technology platforms and consulting together under one roof. This proposal combines the Respongo solution(s) best suited to your organisation's needs.",
+    productTr: "Respongo ekosistemi; öğrenme yönetimi (GOLMS), öğrenme deneyimi (GOLXP), hazır içerik kütüphanesi (GOCATALOG), kuruma özel içerik üretimi (GOFACTORY) ve içerik üretim araçlarını (GOTOOLS) tek bir stratejinin parçaları olarak sunar — 15'ten fazla ülkede, 20'den fazla sektörde kanıtlanmış bir yaklaşımla.",
+    productEn: "The Respongo ecosystem brings learning management (GOLMS), learning experience (GOLXP), a ready-made content library (GOCATALOG), custom content production (GOFACTORY) and authoring tools (GOTOOLS) together as parts of one strategy — an approach proven across 15+ countries and 20+ industries.",
+    includedTr: ["Mevcut sistemlerin ve ihtiyaçların keşfi", "Doğru Respongo ürün/ürünlerinin belirlenmesi", "Uygulama planı ve zaman çizelgesi", "Canlıya geçiş ve takip"],
+    includedEn: ["Discovery of current systems and needs", "Identifying the right Respongo product(s)", "Implementation plan and timeline", "Go-live and follow-up"],
+    excludedTr: ["Kapsam dışı özel geliştirmeler", "Üçüncü taraf lisans ve altyapı bedelleri"],
+    excludedEn: ["Out-of-scope custom development", "Third-party licence and infrastructure fees"],
+  },
+};
+
+function proposalCopyFor(product: StudioProduct): ProposalCopy {
+  return PROPOSAL_COPY[(product ?? "general") as ProposalCopyKey];
+}
+
 // Legal copy intentionally remains empty: it must be supplied and approved by Respongo's counsel.
 // Teklif Şablonları 2.0: her bölüm TR ve EN içeriğini AYNI satırda taşır — düzenleyicide iki dil
 // yan yana, tek kaydetme ile güncellenir. Bu yüzden başlangıç şablonu da her zaman iki dili birden doldurur.
 export function createStudioSections(product: StudioProduct = null): StudioSectionSeed[] {
   const item = studioProduct(product);
-  const productBodyTr = `${item.trName}; kurumun hedefleri, mevcut ekosistemi ve ölçülebilir çıktıları için yapılandırılır.`;
-  const productBodyEn = `${item.enName} is structured around your organisation's goals, existing ecosystem, and measurable outcomes.`;
-  const coverBodyTr = `Kurumunuza özel ${item.label} çözüm önerisi`;
-  const coverBodyEn = `A tailored ${item.label} solution proposal for your organisation`;
+  const copy = proposalCopyFor(product);
   return [
-    { section_type: "cover", legal_region: null, sort_order: 10, title_tr: titles.cover.tr, title_en: titles.cover.en, body_tr: coverBodyTr, body_en: coverBodyEn, content: { cover_image: item.coverImage, accent: item.accent } },
+    { section_type: "cover", legal_region: null, sort_order: 10, title_tr: titles.cover.tr, title_en: titles.cover.en, body_tr: copy.coverTr, body_en: copy.coverEn, content: { cover_image: item.coverImage, accent: item.accent } },
     { section_type: "customer_info", legal_region: null, sort_order: 20, title_tr: titles.customer_info.tr, title_en: titles.customer_info.en, body_tr: "", body_en: "", content: {} },
-    { section_type: "scope", legal_region: null, sort_order: 30, title_tr: titles.scope.tr, title_en: titles.scope.en, body_tr: "", body_en: "", content: { included_tr: [], included_en: [], excluded_tr: [], excluded_en: [] } },
-    { section_type: "product_info", legal_region: null, sort_order: 40, title_tr: titles.product_info.tr, title_en: titles.product_info.en, body_tr: productBodyTr, body_en: productBodyEn, content: { cover_image: item.coverImage, accent: item.accent } },
+    { section_type: "scope", legal_region: null, sort_order: 30, title_tr: titles.scope.tr, title_en: titles.scope.en, body_tr: "", body_en: "", content: { included_tr: copy.includedTr, included_en: copy.includedEn, excluded_tr: copy.excludedTr, excluded_en: copy.excludedEn } },
+    { section_type: "product_info", legal_region: null, sort_order: 40, title_tr: titles.product_info.tr, title_en: titles.product_info.en, body_tr: copy.productTr, body_en: copy.productEn, content: { cover_image: item.coverImage, accent: item.accent } },
     { section_type: "legal_terms", legal_region: "tr", sort_order: 50, title_tr: titles.legal_tr.tr, title_en: titles.legal_tr.en, body_tr: "", body_en: "", content: { review_required: true } },
     { section_type: "legal_terms", legal_region: "us", sort_order: 60, title_tr: titles.legal_us.tr, title_en: titles.legal_us.en, body_tr: "", body_en: "", content: { review_required: true } },
     { section_type: "bank_info", legal_region: null, sort_order: 70, title_tr: titles.bank_info.tr, title_en: titles.bank_info.en, body_tr: "", body_en: "", content: { bank_name: "", account_name: "", iban: "", swift: "", currency: "" } },

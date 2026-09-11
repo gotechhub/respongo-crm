@@ -83,12 +83,20 @@ export type TaskInput = {
   title: string;
   description: string;
   dueDate: string | null;
+  // Görevlerim (/tasks) ekranındaki "Yeni Görev" formunda oluşturma anında
+  // tek bir kişiye atama kolaylığı için eklendi — projects/[id] görev
+  // panosundaki mevcut çağrılar bu alanı hiç göndermiyor, geriye dönük
+  // uyumlu (opsiyonel).
+  assigneeId?: string | null;
 };
 
 // RLS notu: insert sadece proje sahibi veya founder tarafından yapılabiliyor
 // (tasks_project_owner / tasks_founder_all) — atanan kişi (assignee) yeni
-// görev oluşturamaz, sadece var olanın durumunu güncelleyebilir.
-export async function createTask(input: TaskInput): Promise<ActionResult> {
+// görev oluşturamaz, sadece var olanın durumunu güncelleyebilir. Bu yüzden
+// /tasks ekranındaki proje seçim listesi sadece kullanıcının sahibi olduğu
+// (ya da founder/region_admin ise tüm) projeleri gösterir — RLS zaten bunu
+// zorlar, UI baştan yanlış beklenti yaratmasın diye aynı kısıtı yansıtıyor.
+export async function createTask(input: TaskInput): Promise<ActionResult & { taskId?: string }> {
   const supabase = createClient();
   const {
     data: { user },
@@ -96,25 +104,42 @@ export async function createTask(input: TaskInput): Promise<ActionResult> {
   if (!user) {
     return { ok: false, error: "Oturum bulunamadı." };
   }
+  if (!input.projectId) {
+    return { ok: false, error: "Proje seçimi zorunlu — görevler her zaman bir projeye bağlıdır." };
+  }
   if (!input.title.trim()) {
     return { ok: false, error: "Görev başlığı zorunlu." };
   }
 
-  const { error } = await supabase.from("tasks").insert({
-    project_id: input.projectId,
-    title: input.title.trim(),
-    description: input.description.trim() || null,
-    status: "todo",
-    due_date: input.dueDate,
-    created_by: user.id,
-  });
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({
+      project_id: input.projectId,
+      title: input.title.trim(),
+      description: input.description.trim() || null,
+      status: "todo",
+      due_date: input.dueDate,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return { ok: false, error: error.message };
   }
 
+  const taskId = data.id as string;
+
+  if (input.assigneeId) {
+    // Atama başarısız olsa bile (ör. yetki) görev zaten oluşturuldu —
+    // sessizce yut, sert bir hata "görev oluşmadı" izlenimi verirdi;
+    // kullanıcı göreve sonradan proje panosundan atama yapabilir.
+    await supabase.from("task_assignees").insert({ task_id: taskId, profile_id: input.assigneeId });
+  }
+
   revalidatePath(`/projects/${input.projectId}`);
-  return { ok: true };
+  revalidatePath("/tasks");
+  return { ok: true, taskId };
 }
 
 // RLS notu: hem proje sahibi hem de göreve atanmış kişi (task_assignees)
