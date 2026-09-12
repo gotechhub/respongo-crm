@@ -80,10 +80,15 @@ export async function startViewAs(targetProfileId: string): Promise<ActionResult
     return { ok: false, error: "Oturum bağlantısı oluşturulamadı: " + (linkError?.message ?? "bilinmeyen hata") };
   }
 
+  // NOT: Supabase'in verifyOtp fonksiyonu iki ayri dogrulama seklini birbirine
+  // KARISTIRMAYA izin vermiyor -- ya {email, token, type} ya da SADECE
+  // {token_hash, type} gonderilmeli. Ikisi birden (token_hash + email)
+  // gonderilirse GoTrue istemcisi "Only the token_hash and type should be
+  // provided" hatasi verip istegi hic sunucuya gondermeden reddediyor. Burada
+  // zaten hashed_token kullanildigi icin email ALANI GONDERILMEMELI.
   const { error: verifyError } = await supabase.auth.verifyOtp({
     type: "magiclink",
     token_hash: linkData.properties.hashed_token,
-    email: target.email,
   });
   if (verifyError) {
     await admin.from("view_as_audit_log").delete().eq("id", logRow.id);
