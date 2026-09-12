@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { UserRole } from "@/lib/roles";
 import {
   LayoutDashboard,
   Users,
@@ -34,6 +35,21 @@ export type NavItem = {
   badge?: string;
   /** beta = kurulu, live route. v1 = spec'te var ama bu fazda pasif (rota yok). */
   phase: "beta" | "v1";
+  /**
+   * DERS (2026-09-12): Sidebar bugüne kadar HİÇBİR role göre filtreleme
+   * yapmıyordu — her rol (satış ekibi, iş ortağı, destek, vb.) TÜM menüyü
+   * (Yönetim, İş Ortakları admin paneli, Satış Ekibi admin listesi dahil)
+   * görüyordu. Sayfaların çoğu bilinçli olarak sadece RLS'e güveniyor (DERS
+   * 26 — app katmanında tekrar rol kontrolü yazılmadı), AMA az sayıda sayfa
+   * (bkz. aşağıdaki allowedRoles atamaları) zaten kendi içinde sert bir
+   * "sadece X rolü görebilir" bloğu içeriyordu (ör. /users, /system-settings,
+   * /partner, /sales/team, /partner-admin, /marketing/settings,
+   * /finance/settings). Bu alan SADECE o mevcut sunucu-taraflı kısıtlamaları
+   * menüye de yansıtıyor — YENİ bir erişim kuralı İCAT ETMİYOR. Belirtilmezse
+   * (undefined) öğe "customer" hariç tüm rollere görünür (customer zaten bu
+   * layout'a hiç girmiyor, bkz. app/(dashboard)/layout.tsx).
+   */
+  allowedRoles?: UserRole[];
 };
 
 /**
@@ -128,7 +144,16 @@ export const navGroups: NavGroup[] = [
         labelEn: "Team & Resources",
         items: [
           { label: "Performansım", labelEn: "My Performance", href: "/sales/performance", icon: TrendingUp, phase: "beta" },
-          { label: "Satış Ekibi", labelEn: "Sales Team", href: "/sales/team", icon: UserCog, phase: "beta" },
+          {
+            label: "Satış Ekibi",
+            labelEn: "Sales Team",
+            href: "/sales/team",
+            icon: UserCog,
+            phase: "beta",
+            // app/(dashboard)/sales/team/page.tsx: "sadece Süper Admin ve Bölge
+            // Yöneticileri satış ekibini yönetebilir" bloğuyla zaten kısıtlı.
+            allowedRoles: ["founder", "region_admin"],
+          },
           { label: "Kaynaklar", labelEn: "Resources", href: "/sales/resources", icon: BookOpen, phase: "beta" },
         ],
       },
@@ -151,8 +176,25 @@ export const navGroups: NavGroup[] = [
     subgroups: [
       {
         items: [
-          { label: "İş Ortağı Panelim", labelEn: "My Partner Panel", href: "/partner", icon: Handshake, phase: "beta" },
-          { label: "İş Ortakları", labelEn: "Partners", href: "/partner-admin", icon: UserCog, phase: "beta" },
+          {
+            label: "İş Ortağı Panelim",
+            labelEn: "My Partner Panel",
+            href: "/partner",
+            icon: Handshake,
+            phase: "beta",
+            // app/(dashboard)/partner/page.tsx: "Bu sayfa sadece satış iş
+            // ortakları içindir" — diğer roller zaten bir uyarı ekranı görüyor.
+            allowedRoles: ["partner_tr", "partner_global"],
+          },
+          {
+            label: "İş Ortakları",
+            labelEn: "Partners",
+            href: "/partner-admin",
+            icon: UserCog,
+            phase: "beta",
+            // app/(dashboard)/partner-admin/page.tsx: founder-only.
+            allowedRoles: ["founder"],
+          },
         ],
       },
     ],
@@ -180,7 +222,15 @@ export const navGroups: NavGroup[] = [
         items: [
           { label: "Kampanyalar", labelEn: "Campaigns", href: "/marketing", icon: Megaphone, phase: "beta" },
           { label: "İçerik Takvimi", labelEn: "Content Calendar", href: "/marketing/calendar", icon: CalendarDays, phase: "beta" },
-          { label: "Pazarlama Ayarları", labelEn: "Marketing Settings", href: "/marketing/settings", icon: Settings, phase: "beta" },
+          {
+            label: "Pazarlama Ayarları",
+            labelEn: "Marketing Settings",
+            href: "/marketing/settings",
+            icon: Settings,
+            phase: "beta",
+            // app/(dashboard)/marketing/settings/page.tsx: founder-only (Brevo entegrasyonu).
+            allowedRoles: ["founder"],
+          },
         ],
       },
     ],
@@ -193,7 +243,15 @@ export const navGroups: NavGroup[] = [
       {
         items: [
           { label: "Faturalar", labelEn: "Invoices", href: "/finance", icon: Receipt, phase: "beta" },
-          { label: "Fatura Ayarları", labelEn: "Invoice Settings", href: "/finance/settings", icon: Settings, phase: "beta" },
+          {
+            label: "Fatura Ayarları",
+            labelEn: "Invoice Settings",
+            href: "/finance/settings",
+            icon: Settings,
+            phase: "beta",
+            // app/(dashboard)/finance/settings/page.tsx: founder-only (Paraşüt entegrasyonu).
+            allowedRoles: ["founder"],
+          },
         ],
       },
     ],
@@ -207,23 +265,80 @@ export const navGroups: NavGroup[] = [
         label: "Kullanıcılar",
         labelEn: "Users",
         items: [
-          { label: "Kullanıcı & Yetki", labelEn: "Users & Permissions", href: "/users", icon: ShieldCheck, phase: "beta" },
-          { label: "Test Hesapları", labelEn: "Test Accounts", href: "/test-accounts", icon: UserCog, phase: "v1" },
+          {
+            label: "Kullanıcı & Yetki",
+            labelEn: "Users & Permissions",
+            href: "/users",
+            icon: ShieldCheck,
+            phase: "beta",
+            // app/(dashboard)/users/page.tsx: "sadece Süper Admin ve Bölge
+            // Yöneticileri kullanıcı yönetebilir" bloğuyla zaten kısıtlı.
+            allowedRoles: ["founder", "region_admin"],
+          },
+          {
+            label: "Test Hesapları",
+            labelEn: "Test Accounts",
+            href: "/test-accounts",
+            icon: UserCog,
+            phase: "v1",
+            // Test hesabı oluşturma founder-only bir server action (bkz.
+            // system-settings/test-accounts-actions.ts requireFounder()).
+            allowedRoles: ["founder"],
+          },
         ],
       },
       {
         label: "Sistem",
         labelEn: "System",
-        items: [{ label: "Sistem Ayarları", labelEn: "System Settings", href: "/system-settings", icon: Settings, phase: "beta" }],
+        items: [
+          {
+            label: "Sistem Ayarları",
+            labelEn: "System Settings",
+            href: "/system-settings",
+            icon: Settings,
+            phase: "beta",
+            // app/(dashboard)/system-settings/page.tsx: founder-only.
+            allowedRoles: ["founder"],
+          },
+        ],
       },
       {
         label: "Yol Haritası",
         labelEn: "Roadmap",
-        items: [{ label: "Ürün Geliştirme", labelEn: "Product Roadmap", href: "/roadmap", icon: Milestone, phase: "v1" }],
+        items: [
+          {
+            label: "Ürün Geliştirme",
+            labelEn: "Product Roadmap",
+            href: "/roadmap",
+            icon: Milestone,
+            phase: "v1",
+            allowedRoles: ["founder", "region_admin"],
+          },
+        ],
       },
     ],
   },
 ];
+
+/**
+ * Verilen role, tüm gruplardaki öğeleri (allowedRoles kısıtlamasına göre)
+ * filtreler; boşalan alt-grup/ana grup listeden tamamen düşürülür ki sidebar
+ * boş bir başlık göstermesin. `role` null ise (rol henüz atanmamış) sadece
+ * kısıtlaması olmayan öğeler gösterilir.
+ */
+export function filterNavGroupsForRole(role: UserRole | null): NavGroup[] {
+  return navGroups
+    .map((group) => {
+      const subgroups = group.subgroups
+        .map((sg) => ({
+          ...sg,
+          items: sg.items.filter((item) => !item.allowedRoles || (role !== null && item.allowedRoles.includes(role))),
+        }))
+        .filter((sg) => sg.items.length > 0);
+      return { ...group, subgroups };
+    })
+    .filter((group) => group.subgroups.length > 0);
+}
 
 /** Sidebar'ın tüm öğelerini (grup/alt-grup ayrımı olmadan) tek düz liste olarak döner. */
 export function flattenNavItems(): NavItem[] {

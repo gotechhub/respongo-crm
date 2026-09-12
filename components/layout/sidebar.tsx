@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { ChevronDown, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { navGroups, resolveActiveHref } from "@/lib/nav-config";
+import { filterNavGroupsForRole, resolveActiveHref } from "@/lib/nav-config";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_LABELS_TR, ROLE_LABELS_EN, REGION_LABELS_TR, REGION_LABELS_EN, type ProfileRow } from "@/lib/roles";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -45,11 +45,20 @@ export function Sidebar({ profile, locale = "tr" }: { profile: ProfileRow; local
   // görünüyor" hatasının kalıcı düzeltmesi).
   const activeHref = useMemo(() => resolveActiveHref(pathname), [pathname]);
 
+  // DERS (2026-09-12): sidebar önceden ROLE FARKI GÖZETMEDEN navGroups'un
+  // TAMAMINI her kullanıcıya gösteriyordu — bir satış temsilcisi bile
+  // "Yönetim" (Kullanıcı & Yetki, Sistem Ayarları) veya "İş Ortakları" admin
+  // panelini menüde görüyordu, oysa o sayfalara girince zaten sunucu
+  // tarafında "yetkin yok" duvarına çarpıyordu. Menü artık aynı kısıtlamayı
+  // (allowedRoles — sayfaların İÇİNDEKİ mevcut founder/region_admin/rol
+  // kontrolleriyle BİREBİR eşleşir, bkz. nav-config.ts yorumları) yansıtıyor.
+  const visibleNavGroups = useMemo(() => filterNavGroupsForRole(profile.role), [profile.role]);
+
   // Aktif öğeyi içeren ana kategori varsayılan olarak açık başlar; diğerleri
   // kapalı — 9 kategori + çok sayıda alt öğe tek ekranda göz yormasın diye.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    for (const group of navGroups) {
+    for (const group of visibleNavGroups) {
       const hasActive = group.subgroups.some((sg) =>
         sg.items.some((item) => item.href === activeHref)
       );
@@ -95,7 +104,7 @@ export function Sidebar({ profile, locale = "tr" }: { profile: ProfileRow; local
       </div>
 
       <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden pr-0.5">
-        {navGroups.map((group) => {
+        {visibleNavGroups.map((group) => {
           const GroupIcon = group.icon;
           const isOpen = openGroups[group.label] ?? true;
           const hasActiveChild = group.subgroups.some((sg) =>
