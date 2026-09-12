@@ -86,8 +86,14 @@ where not exists (
     and t.month = extract(month from current_date)::int
 );
 
+-- NOT: bu ortamda public.partner_meetings.status kolonu, herhangi bir
+-- migration dosyasinda tanimli olmayan (yani daha once elle olusturulmus)
+-- bir "meeting_status" enum tipindedir -- asagidaki VALUES listesindeki
+-- duz metin literalleri hedef kolonun gercek tipine acikca donusturuluyor,
+-- aksi halde Postgres "column status is of type meeting_status but
+-- expression is of type text" hatasi verir (SQLSTATE 42804).
 insert into public.partner_meetings (partner_id, title, meeting_date, notes, status)
-select pp.profile_id, m.title, current_date + m.offset_days, m.notes, m.status
+select pp.profile_id, m.title, current_date + m.offset_days, m.notes, m.status::public.meeting_status
 from public.partner_profiles pp
 cross join (values
   ('Tanışma toplantısı — potansiyel müşteri', -6, 'İlk görüşme yapıldı, teklif hazırlanıyor.', 'completed'),
