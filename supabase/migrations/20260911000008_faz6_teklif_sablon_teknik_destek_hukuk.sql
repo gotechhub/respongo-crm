@@ -22,6 +22,20 @@
 -- legal_terms UPDATE'i SADECE hem body_tr hem body_en hâlâ boşsa çalışır (founder'ın elle girdiği
 -- herhangi bir metin asla ezilmez).
 
+-- Canli veritabaninda public.proposal_template_sections.section_type kolonu
+-- uzerinde, herhangi bir migration dosyasinda tanimli olmayan (yani daha once
+-- elle olusturulmus) bir CHECK constraint bulunuyordu ve bu constraint
+-- asagida eklenen 'technical_specs', 'implementation_timeline', 'support_sla'
+-- degerlerini tanimiyordu (SQLSTATE 23514). Gecerli section_type listesinin
+-- TEK dogru kaynagi zaten lib/proposals/template-studio.ts uygulama kodudur
+-- (cover, customer_info, scope, product_info, technical_specs,
+-- implementation_timeline, support_sla, legal_terms, bank_info, signature) --
+-- veritabani seviyesinde ayrica sabit bir liste tutmak, urun yeni bir bolum
+-- tipi ekledikce tekrar tekrar bu tur hatalara yol acar. Bu yuzden kalici
+-- cozum olarak bu eski/takip edilmeyen constraint tamamen kaldiriliyor.
+alter table public.proposal_template_sections
+  drop constraint if exists proposal_template_sections_section_type_check;
+
 with product_copy(product, phases_tr, phases_en) as (
   values
   ('golms',
