@@ -37,11 +37,93 @@ const titles: Record<string, { tr: string; en: string }> = {
   customer_info: { tr: "Müşteri Bilgileri", en: "Customer details" },
   scope: { tr: "Kapsam", en: "Scope" },
   product_info: { tr: "Çözüm Hakkında", en: "About the solution" },
-  legal_tr: { tr: "Ticari Şartlar", en: "Commercial terms" },
-  legal_us: { tr: "Uluslararası Ticari Şartlar", en: "International commercial terms" },
+  technical_specs: { tr: "Teknik Özellikler ve Güvenlik", en: "Technical Specifications & Security" },
+  implementation_timeline: { tr: "Uygulama Planı", en: "Implementation Plan" },
+  support_sla: { tr: "Destek ve Hizmet Seviyesi (SLA)", en: "Support & Service Level Agreement" },
+  legal_tr: { tr: "Ticari ve Hukuki Şartlar", en: "Commercial & legal terms" },
+  legal_us: { tr: "Uluslararası Ticari ve Hukuki Şartlar", en: "International commercial & legal terms" },
   bank_info: { tr: "Ödeme Bilgileri", en: "Payment details" },
   signature: { tr: "Onay", en: "Acceptance" },
 };
+
+// V5 (2026-09-11): Kullanıcının açık ve sert geri bildirimi — "teklif şablonu çok önemli ve sen
+// çok kötü yapıyorsun bunu acil düzelt ... teknik detaylar ve teklif koşulları gerçekçi ve en iyi
+// şekilde yap". Üç YENİ bölüm eklendi (teknik özellikler/güvenlik, uygulama planı, destek/SLA) ve
+// "ticari şartlar" artık boş bırakılmıyor — respongo.com/tr/yasal/guvenlik sayfasından doğrulanmış
+// gerçek güvenlik iddialarına (SOC 2 Type II uyumu, ISO 27001 çerçevesi, KVKK/GDPR, VAPT, MFA)
+// dayanıyor; site "detaylar talep üzerine yazılı paylaşılır" dediği için biz de aynı temkinli dili
+// koruyoruz — Respongo'nun sahip olmadığı bir sertifikayı iddia etmiyoruz. Ticari/hukuki şartlar
+// gerçekçi bir SAAS sözleşmesi taslağı olarak yazıldı ama HER İKİ bölüm de en üstte "bu bir taslaktır,
+// hukuk danışmanınızca onaylanmalıdır" uyarısı taşıyor — böylece founder gerçek, kullanılabilir bir
+// başlangıç metni alıyor ama bunu hukuki tavsiye gibi sunmuyoruz.
+const TECHNICAL_SPECS_TR = [
+  "Bulut tabanlı, kurulum gerektirmeyen erişim — güncel bir web tarayıcısı yeterlidir",
+  "Aktarımda ve beklemede endüstri standardı şifreleme",
+  "Bilgi güvenliği yönetiminde ISO 27001 çerçevesiyle uyumlu kontroller, SOC 2 Type II ilkelerine uygun bağımsız denetim yaklaşımı",
+  "KVKK ve GDPR gereksinimlerine uygun veri işleme yaklaşımı; talep halinde ayrı bir Veri İşleme Sözleşmesi (DPA) imzalanabilir",
+  "Rol tabanlı yetkilendirme, en az ayrıcalık ilkesi ve çok faktörlü kimlik doğrulama (MFA)",
+  "Periyodik zafiyet taramaları ve bağımsız sızma testleri (VAPT)",
+  "Düzenli yedekleme ve geri dönüş testleri; kurtarma süresi/nokta hedefleri (RTO/RPO) hizmet sözleşmesinde belirtilir",
+  "SSO, HRIS, Microsoft Teams ve Zoom ile hazır entegrasyonlar; açık API ve webhook desteği",
+  "SCORM ve xAPI içerik standartlarıyla tam uyumluluk",
+  "22'den fazla dilde içerik ve arayüz desteği",
+  "Çevrimdışı çalışabilen mobil öğrenme deneyimi",
+];
+const TECHNICAL_SPECS_EN = [
+  "Cloud-based, no-install access — a current web browser is sufficient",
+  "Industry-standard encryption in transit and at rest",
+  "Information security controls aligned with the ISO 27001 framework, following SOC 2 Type II independent-audit principles",
+  "Data processing aligned with KVKK and GDPR requirements; a separate Data Processing Agreement (DPA) can be executed on request",
+  "Role-based authorization, least-privilege principle and multi-factor authentication (MFA)",
+  "Periodic vulnerability scans and independent penetration testing (VAPT)",
+  "Regular backups and recovery testing; recovery time/point objectives (RTO/RPO) are defined in the service agreement",
+  "Ready-made SSO, HRIS, Microsoft Teams and Zoom integrations; open API and webhook support",
+  "Full compliance with SCORM and xAPI content standards",
+  "Content and interface support in 22+ languages",
+  "Offline-capable mobile learning experience",
+];
+const SUPPORT_SLA_TR = [
+  "Kritik (P1 — sistem tamamen erişilemez): 7/24 kanal, ilk yanıt 2 saat içinde",
+  "Yüksek (P2 — önemli bir işlev çalışmıyor): iş günü içinde ilk yanıt 4 saat içinde",
+  "Normal (P3 — genel soru/talep): ilk yanıt 1 iş günü içinde",
+  "Destek kanalları: destek@respongo.com (TR) / support@respongo.com (Global) ve uygulama içi destek merkezi",
+  "Standart destek saatleri: Pazartesi–Cuma 09:00–18:00 (TRT); kritik öncelik 7/24 karşılanır",
+  "Kurumsal (Enterprise) paketlerde atanmış bir Müşteri Başarı Yöneticisi (CSM) eşlik eder",
+];
+const SUPPORT_SLA_EN = [
+  "Critical (P1 — system fully inaccessible): 24/7 channel, first response within 2 hours",
+  "High (P2 — a major function is broken): first response within 4 business hours",
+  "Normal (P3 — general question/request): first response within 1 business day",
+  "Support channels: destek@respongo.com (TR) / support@respongo.com (Global) and the in-app support centre",
+  "Standard support hours: Monday–Friday 09:00–18:00 (TRT); critical priority is covered 24/7",
+  "Enterprise packages include a dedicated Customer Success Manager (CSM)",
+];
+const LEGAL_DRAFT_NOTICE_TR = "[TASLAK — bu bölüm hukuk danışmanınızca onaylanmadan yürürlüğe girmemelidir]\n\n";
+const LEGAL_DRAFT_NOTICE_EN = "[DRAFT — this section must be reviewed and approved by your legal counsel before it takes effect]\n\n";
+const LEGAL_TR_BODY = LEGAL_DRAFT_NOTICE_TR + [
+  "Ödeme Şartları: Faturalar teklifin onaylanmasını takiben düzenlenir; ödeme vadesi, aksi kararlaştırılmadıkça fatura tarihinden itibaren 30 gündür. Gecikme halinde yasal gecikme faizi uygulanabilir.",
+  "Yenileme: Lisans/hizmet süresi sona ermeden en az 30 gün önce taraflardan biri yazılı olarak fesih bildirmediği sürece sözleşme aynı şartlarla 1 yıl daha uzar.",
+  "Fesih: Taraflardan biri esaslı bir yükümlülüğünü ihlal eder ve 30 günlük yazılı ihtara rağmen düzeltmezse, diğer taraf sözleşmeyi feshedebilir.",
+  "Gizlilik: Taraflar, işbu teklif kapsamında öğrendikleri ticari ve teknik bilgileri üçüncü kişilerle paylaşmayacak, karşılıklı gizlilik yükümlülüğüne uyacaktır.",
+  "Fikri Mülkiyet: Respongo platformları ve alt yapısına ait tüm fikri mülkiyet hakları Respongo'ya aittir; müşteri kendi verileri ve platformda ürettiği içerik üzerindeki haklarını korur.",
+  "Kişisel Verilerin Korunması: Taraflar 6698 sayılı KVKK kapsamındaki yükümlülüklerini yerine getirir; veri işleme ilişkisinin detayları ayrı bir Veri İşleme Sözleşmesi (DPA) ile belirlenebilir.",
+  "Sorumluluk Sınırı: Respongo'nun bu teklife dayalı sözleşmeden doğan toplam sorumluluğu, ilgili 12 aylık dönemde ödenen toplam bedeli aşamaz; dolaylı zararlar kapsam dışıdır.",
+  "Mücbir Sebep: Taraflar, makul kontrolleri dışındaki mücbir sebep hallerinde yükümlülüklerini yerine getirememekten sorumlu tutulamaz.",
+  "Uygulanacak Hukuk ve Yetki: İşbu teklife ve doğacak sözleşmeye Türkiye Cumhuriyeti hukuku uygulanır; uyuşmazlıklarda İstanbul (Merkez) Mahkemeleri ve İcra Daireleri yetkilidir.",
+  "Geçerlilik: Bu teklif, hazırlanma tarihinden itibaren 30 gün geçerlidir.",
+].map((line) => `• ${line}`).join("\n");
+const LEGAL_US_BODY = LEGAL_DRAFT_NOTICE_EN + [
+  "Payment Terms: Invoices are issued following acceptance of this proposal; payment is due within 30 days of the invoice date unless otherwise agreed. Late payment may be subject to statutory interest.",
+  "Renewal: Unless either party gives written notice of termination at least 30 days before the term ends, the agreement automatically renews for a further 1-year term under the same terms.",
+  "Termination: Either party may terminate for uncured material breach following 30 days' written notice.",
+  "Confidentiality: Each party will keep the other's confidential business and technical information disclosed under this proposal confidential, on a mutual basis.",
+  "Intellectual Property: Respongo retains all intellectual property rights in its platforms and infrastructure; the customer retains rights to its own data and to content it produces on the platform.",
+  "Data Protection: The parties will meet their obligations under applicable data protection law (including GDPR where applicable); a separate Data Processing Agreement (DPA) can be executed to govern the details.",
+  "Limitation of Liability: Respongo's total liability under any agreement resulting from this proposal is capped at the fees paid in the preceding 12 months, excluding indirect or consequential damages.",
+  "Force Majeure: Neither party is liable for failure to perform due to causes beyond its reasonable control.",
+  "Governing Law & Jurisdiction: This proposal and any resulting agreement are governed by the laws of the Republic of Türkiye; disputes are subject to the courts and execution offices of Istanbul (Merkez), unless the definitive agreement specifies otherwise.",
+  "Validity: This proposal is valid for 30 days from the date of preparation.",
+].map((line) => `• ${line}`).join("\n");
 
 // V4 (2026-09-11): Kullanıcının açık isteği — "teklif şablonlarını daha kaliteli yap ... daha
 // kaliteli gerçekçi ve daha detaylı olsun" — respongo.com/tr ve /en'den alınan GERÇEK ürün
@@ -54,6 +136,7 @@ type ProposalCopy = {
   productTr: string; productEn: string;
   includedTr: string[]; includedEn: string[];
   excludedTr: string[]; excludedEn: string[];
+  implementationTr: string[]; implementationEn: string[];
 };
 
 type ProposalCopyKey = "golms" | "golxp" | "gocatalog" | "gofactory" | "gotools" | "general";
@@ -68,6 +151,8 @@ const PROPOSAL_COPY: Record<ProposalCopyKey, ProposalCopy> = {
     includedEn: ["Migrating your organisational structure and role/department definitions into GOLMS", "SSO, HRIS, Microsoft Teams and Zoom integration setup", "Administrator and content-owner training", "Go-live and 30 days of hands-on support"],
     excludedTr: ["Kapsam dışı özel entegrasyon geliştirmeleri", "Üçüncü taraf lisans bedelleri (SSO sağlayıcı, HRIS vb.)"],
     excludedEn: ["Custom integration development outside this scope", "Third-party licence fees (SSO provider, HRIS, etc.)"],
+    implementationTr: ["1. Hafta — Keşif ve kurumsal yapı/rol planlaması", "2–3. Hafta — Kurulum, SSO/HRIS entegrasyonu ve içerik aktarımı", "4. Hafta — Yönetici eğitimi ve pilot grup", "5. Hafta — Canlıya geçiş ve ilk 30 gün yerinde destek"],
+    implementationEn: ["Week 1 — Discovery and organisational/role planning", "Weeks 2–3 — Setup, SSO/HRIS integration and content migration", "Week 4 — Administrator training and pilot group", "Week 5 — Go-live and 30 days of hands-on support"],
   },
   golxp: {
     coverTr: "GOLXP Öğrenme Deneyimi Platformu, eğitimi bir zorunluluktan bir alışkanlığa dönüştürür: her çalışan, rolüne, hedeflerine ve ilgi alanlarına göre kişiselleştirilmiş kendi öğrenme akışını ve beceri haritasını görür. Respongo'nun 5 milyondan fazla kullanıcıya ulaşan platform deneyimini kurumunuza taşıyoruz.",
@@ -78,6 +163,8 @@ const PROPOSAL_COPY: Record<ProposalCopyKey, ProposalCopy> = {
     includedEn: ["Role- and goal-based learning flow configuration", "Activating the AI-powered content recommendation engine", "Skill map and skill-gap analysis setup", "Manager dashboard training and live support"],
     excludedTr: ["Özel içerik üretimi (GOFACTORY kapsamındadır)", "Üçüncü taraf içerik lisans bedelleri"],
     excludedEn: ["Custom content production (covered separately under GOFACTORY)", "Third-party content licence fees"],
+    implementationTr: ["1. Hafta — Rol/hedef bazlı akış planlaması", "2–3. Hafta — Kurulum ve yapay zekâ önerisi motorunun devreye alınması", "4. Hafta — Yönetici paneli eğitimi", "5. Hafta — Canlıya geçiş ve kullanım takibi"],
+    implementationEn: ["Week 1 — Role/goal-based flow planning", "Weeks 2–3 — Setup and activation of the AI recommendation engine", "Week 4 — Manager dashboard training", "Week 5 — Go-live and usage follow-up"],
   },
   gocatalog: {
     coverTr: "GOCATALOG ile beklemeden başlıyorsunuz: Respongo, isEazy Skills, Cegos, Udemy Business ve LinkedIn Learning gibi ortaklardan derlenen, 22'den fazla dilde güncel bir hazır eğitim kütüphanesine anında erişim. 400'den fazla kurumun tercih ettiği içerik ekosistemini kurumunuza açıyoruz.",
@@ -88,6 +175,8 @@ const PROPOSAL_COPY: Record<ProposalCopyKey, ProposalCopy> = {
     includedEn: ["Provisioning access to the 22+ language ready-made library", "Department/role-based assignment setup", "Activating the usage and completion reporting dashboard", "90 days of onboarding support"],
     excludedTr: ["Kurum içi özel içerik üretimi", "GOLMS/GOLXP dışında üçüncü taraf platform entegrasyonu"],
     excludedEn: ["In-house custom content production", "Third-party platform integrations outside GOLMS/GOLXP"],
+    implementationTr: ["1. Hafta — Erişim tanımlama ve atama kurgusu", "2. Hafta — Departman/rol bazlı yayına alma", "3. Hafta — Kullanım raporlama ve ince ayar"],
+    implementationEn: ["Week 1 — Access provisioning and assignment setup", "Week 2 — Department/role-based rollout", "Week 3 — Usage reporting and fine-tuning"],
   },
   gofactory: {
     coverTr: "GOFACTORY ile kuruma özel içerik üretiyoruz: sistemli, ölçülebilir ve markanıza birebir. Öğrenme tasarımından 2D/3D animasyona, canlı çekimden VR/360° deneyimlere kadar uçtan uca prodüksiyonu, SCORM/xAPI standartlarında paketleyerek teslim ediyoruz — 3.000'den fazla tamamlanmış projenin deneyimiyle.",
@@ -98,6 +187,8 @@ const PROPOSAL_COPY: Record<ProposalCopyKey, ProposalCopy> = {
     includedEn: ["Discovery and learning-design workshop", "Script, storyboard and visual design", "SCORM/xAPI packaging and QA", "One round of revisions"],
     excludedTr: ["3D/VR prodüksiyon (talep halinde ayrı teklif kapsamına eklenir)", "Seslendirme/dublaj için üçüncü taraf stüdyo bedelleri"],
     excludedEn: ["3D/VR production (added under a separate scope on request)", "Third-party voice-over/dubbing studio fees"],
+    implementationTr: ["1–2. Hafta — Keşif ve öğrenme tasarımı çalıştayı", "3–6. Hafta — Prodüksiyon (senaryo, görsel/animasyon, seslendirme)", "7. Hafta — Revizyon turu", "8. Hafta — Teslim, SCORM/xAPI paketleme ve entegrasyon (süre proje kapsamına göre değişir)"],
+    implementationEn: ["Weeks 1–2 — Discovery and learning-design workshop", "Weeks 3–6 — Production (script, visuals/animation, voice-over)", "Week 7 — Revision round", "Week 8 — Delivery, SCORM/xAPI packaging and integration (duration varies by project scope)"],
   },
   gotools: {
     coverTr: "GOTOOLS ile kurum içi içerik üretimini dış bağımlılık olmadan hızlandırıyorsunuz. Craft ve isEazy Author gibi bulut tabanlı yazarlık araçlarıyla ekibiniz, kurumsal şablonlar ve marka kiti üzerinden hızlı, tutarlı içerik üretip anında güncelleyebilir.",
@@ -108,6 +199,8 @@ const PROPOSAL_COPY: Record<ProposalCopyKey, ProposalCopy> = {
     includedEn: ["Craft / isEazy Author licence setup", "Corporate template and brand kit configuration", "Authoring training for your content team", "60 days of technical support"],
     excludedTr: ["Kurum içi ekip tarafından üretilecek içeriklerin kendisi", "Üçüncü taraf stok görsel/video lisansları"],
     excludedEn: ["The content itself, produced by your in-house team", "Third-party stock image/video licences"],
+    implementationTr: ["1. Hafta — Lisans ve marka kiti kurulumu", "2. Hafta — İçerik ekibi için yazarlık eğitimi", "3. Hafta — İlk içeriklerin yayına alınması"],
+    implementationEn: ["Week 1 — Licence and brand-kit setup", "Week 2 — Authoring training for your content team", "Week 3 — First content pieces go live"],
   },
   general: {
     coverTr: "Respongo, 17+ yıllık uzmanlığı, 400'den fazla kurumsal müşterisi ve 5 milyondan fazla kullanıcıya ulaşan öğrenme ekosistemiyle içerik üretimini, teknoloji platformlarını ve danışmanlığı tek çatı altında birleştirir. Bu teklif, kurumunuzun ihtiyacına en uygun Respongo çözümünü/çözümlerini bir araya getirir.",
@@ -118,6 +211,8 @@ const PROPOSAL_COPY: Record<ProposalCopyKey, ProposalCopy> = {
     includedEn: ["Discovery of current systems and needs", "Identifying the right Respongo product(s)", "Implementation plan and timeline", "Go-live and follow-up"],
     excludedTr: ["Kapsam dışı özel geliştirmeler", "Üçüncü taraf lisans ve altyapı bedelleri"],
     excludedEn: ["Out-of-scope custom development", "Third-party licence and infrastructure fees"],
+    implementationTr: ["1. Hafta — Mevcut sistemlerin ve ihtiyaçların keşfi", "2. Hafta — Doğru Respongo ürün/ürünlerinin ve mimarinin belirlenmesi", "3–4. Hafta — Kurulum ve entegrasyon", "5. Hafta — Canlıya geçiş ve takip"],
+    implementationEn: ["Week 1 — Discovery of current systems and needs", "Week 2 — Identifying the right Respongo product(s) and architecture", "Weeks 3–4 — Setup and integration", "Week 5 — Go-live and follow-up"],
   },
 };
 
@@ -136,16 +231,21 @@ export function createStudioSections(product: StudioProduct = null): StudioSecti
     { section_type: "customer_info", legal_region: null, sort_order: 20, title_tr: titles.customer_info.tr, title_en: titles.customer_info.en, body_tr: "", body_en: "", content: {} },
     { section_type: "scope", legal_region: null, sort_order: 30, title_tr: titles.scope.tr, title_en: titles.scope.en, body_tr: "", body_en: "", content: { included_tr: copy.includedTr, included_en: copy.includedEn, excluded_tr: copy.excludedTr, excluded_en: copy.excludedEn } },
     { section_type: "product_info", legal_region: null, sort_order: 40, title_tr: titles.product_info.tr, title_en: titles.product_info.en, body_tr: copy.productTr, body_en: copy.productEn, content: { cover_image: item.coverImage, accent: item.accent } },
-    { section_type: "legal_terms", legal_region: "tr", sort_order: 50, title_tr: titles.legal_tr.tr, title_en: titles.legal_tr.en, body_tr: "", body_en: "", content: { review_required: true } },
-    { section_type: "legal_terms", legal_region: "us", sort_order: 60, title_tr: titles.legal_us.tr, title_en: titles.legal_us.en, body_tr: "", body_en: "", content: { review_required: true } },
-    { section_type: "bank_info", legal_region: null, sort_order: 70, title_tr: titles.bank_info.tr, title_en: titles.bank_info.en, body_tr: "", body_en: "", content: { bank_name: "", account_name: "", iban: "", swift: "", currency: "" } },
-    { section_type: "signature", legal_region: null, sort_order: 80, title_tr: titles.signature.tr, title_en: titles.signature.en, body_tr: "", body_en: "", content: {} },
+    { section_type: "technical_specs", legal_region: null, sort_order: 50, title_tr: titles.technical_specs.tr, title_en: titles.technical_specs.en, body_tr: "", body_en: "", content: { items_tr: TECHNICAL_SPECS_TR, items_en: TECHNICAL_SPECS_EN } },
+    { section_type: "implementation_timeline", legal_region: null, sort_order: 60, title_tr: titles.implementation_timeline.tr, title_en: titles.implementation_timeline.en, body_tr: "", body_en: "", content: { phases_tr: copy.implementationTr, phases_en: copy.implementationEn } },
+    { section_type: "support_sla", legal_region: null, sort_order: 70, title_tr: titles.support_sla.tr, title_en: titles.support_sla.en, body_tr: "", body_en: "", content: { tiers_tr: SUPPORT_SLA_TR, tiers_en: SUPPORT_SLA_EN } },
+    { section_type: "legal_terms", legal_region: "tr", sort_order: 80, title_tr: titles.legal_tr.tr, title_en: titles.legal_tr.en, body_tr: LEGAL_TR_BODY, body_en: LEGAL_US_BODY, content: { review_required: true } },
+    { section_type: "legal_terms", legal_region: "us", sort_order: 90, title_tr: titles.legal_us.tr, title_en: titles.legal_us.en, body_tr: LEGAL_TR_BODY, body_en: LEGAL_US_BODY, content: { review_required: true } },
+    { section_type: "bank_info", legal_region: null, sort_order: 100, title_tr: titles.bank_info.tr, title_en: titles.bank_info.en, body_tr: "", body_en: "", content: { bank_name: "", account_name: "", iban: "", swift: "", currency: "" } },
+    { section_type: "signature", legal_region: null, sort_order: 110, title_tr: titles.signature.tr, title_en: titles.signature.en, body_tr: "", body_en: "", content: {} },
   ];
 }
 
 export function sectionDisplayName(type: string, region: "tr" | "us" | null): string {
-  if (type === "legal_terms") return region === "us" ? "Hukuki şartlar · Global" : "Hukuki şartlar · Türkiye";
+  if (type === "legal_terms") return region === "us" ? "Ticari ve hukuki şartlar · Global" : "Ticari ve hukuki şartlar · Türkiye";
   return {
-    cover: "Kapak", customer_info: "Müşteri bilgileri", scope: "Kapsam", product_info: "Ürün anlatımı", bank_info: "Ödeme bilgileri", signature: "Onay & imza",
+    cover: "Kapak", customer_info: "Müşteri bilgileri", scope: "Kapsam", product_info: "Ürün anlatımı",
+    technical_specs: "Teknik özellikler ve güvenlik", implementation_timeline: "Uygulama planı", support_sla: "Destek ve SLA",
+    bank_info: "Ödeme bilgileri", signature: "Onay & imza",
   }[type] ?? "Özel bölüm";
 }

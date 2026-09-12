@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/roles";
+import { getUiLocale } from "@/lib/locale-server";
 import { ResourcesPanel, type ResourceRow } from "./resources-panel";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export default async function ResourcesPage() {
     .order("sort_order", { ascending: true });
 
   const resources = (data ?? []) as ResourceRow[];
+  const locale = getUiLocale();
 
   return (
     <>
@@ -33,7 +35,7 @@ export default async function ResourcesPage() {
         title="Kaynaklar"
         subtitle="Satış konuşmaları, ürün tanıtımları, sektörel sözlük ve onboarding materyalleri — ekip ve iş ortakları için ortak bilgi merkezi."
       />
-      <ResourcesPanel resources={resources} canManage={isFounder} />
+      <ResourcesPanel resources={resources} canManage={isFounder} locale={locale} />
     </>
   );
 }

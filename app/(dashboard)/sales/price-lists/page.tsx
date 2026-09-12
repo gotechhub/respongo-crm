@@ -1,37 +1,14 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
-import { PRODUCT_LOGO } from "@/lib/product-logos";
-import { Logo } from "@/components/ui/logo";
 import { SearchInput } from "@/components/ui/search-input";
+import { RegionTabs } from "@/components/ui/region-tabs";
+import type { Region, UserRole } from "@/lib/roles";
+import { PriceListsPanel, type PriceListRow } from "./price-lists-panel";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const PRODUCT_LABEL: Record<string, string> = {
-  golms: "GOLMS",
-  golxp: "GOLXP",
-  gocatalog: "GOCATALOG",
-  gofactory: "GOFACTORY",
-  gotools: "GOTOOLS",
-};
-
-type PriceListItem = {
-  id: string;
-  name: string;
-  description: string | null;
-  unit: string;
-  unit_price: number;
-};
-
-type PriceList = {
-  id: string;
-  name: string;
-  product: string;
-  currency: string;
-  is_active: boolean;
-  price_list_items: PriceListItem[];
-};
 
 export default async function PriceListsPage({
   searchParams,
@@ -40,19 +17,41 @@ export default async function PriceListsPage({
 }) {
   const supabase = createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: callerProfile } = await supabase.from("profiles").select("role, region").eq("id", user.id).single();
+  const myRole = (callerProfile as { role: UserRole | null; region: Region | null } | null)?.role ?? null;
+  const myRegion = (callerProfile as { role: UserRole | null; region: Region | null } | null)?.region ?? null;
+  const isFounder = myRole === "founder";
+  const isRegionAdmin = myRole === "region_admin";
+  // region_admin sadece KENDİ bölgesindeki listeleri yönetebilir (RLS —
+  // 20260911000011 — zaten bunu zorluyor; burada aynısını uygulama
+  // katmanında da tekrarlıyoruz ki region_admin'e "Ortak" veya diğer bölge
+  // seçeneği hiç gösterilmesin, RLS reddiyle karşılaşmasın).
+  const canManage = isFounder || isRegionAdmin;
+  const restrictToRegion: Region | null = isRegionAdmin ? myRegion : null;
+
   const { data } = await supabase
     .from("price_lists")
-    .select("id, name, product, currency, is_active, price_list_items(id, name, description, unit, unit_price)")
-    .order("product", { ascending: true });
+    .select(
+      "id, name, product, currency, region, is_active, valid_from, valid_until, price_list_items(id, name, description, unit, unit_price)"
+    )
+    .order("product", { ascending: true })
+    .order("name", { ascending: true });
 
-  const allPriceLists = (data ?? []) as PriceList[];
+  const allPriceLists = (data ?? []) as PriceListRow[];
 
   const q = typeof searchParams.q === "string" ? searchParams.q.trim().toLowerCase() : "";
-  const priceLists = q
+  const qFiltered = q
     ? allPriceLists
         .map((list) => {
           const listMatches =
-            list.name.toLowerCase().includes(q) || (PRODUCT_LABEL[list.product] ?? list.product).toLowerCase().includes(q);
+            list.name.toLowerCase().includes(q) || list.product.toLowerCase().includes(q);
           const items = listMatches
             ? list.price_list_items
             : list.price_list_items.filter(
@@ -63,73 +62,25 @@ export default async function PriceListsPage({
         .filter((list) => list.price_list_items.length > 0)
     : allPriceLists;
 
+  const regionParam = typeof searchParams.region === "string" ? searchParams.region : "";
+  const region: "tr" | "global" | "" = regionParam === "tr" || regionParam === "global" ? regionParam : "";
+  const priceLists = region ? qFiltered.filter((list) => list.region === region || list.region === null) : qFiltered;
+
   return (
     <>
       <Topbar
         title="Fiyat Listeleri"
-        subtitle="Fiyatlar Respongo 2026 resmi fiyat listesine göre güncellendi. GOLXP için resmi liste henüz yayınlanmadığından listedeki fiyatlar örnek/referans niteliğindedir. 'Teklife özel' işaretli kalemler kurum ihtiyacına göre ayrı fiyatlandırılır."
+        subtitle="Fiyatlar Respongo 2026 resmi fiyat listesine göre güncellendi. Her liste bir bölgeye (TR / Global) veya her iki bölgeye birden atanabilir — Türkiye ortakları yalnızca TR + ortak listeleri, global ortaklar yalnızca Global + ortak listeleri görür. 'Teklife özel' işaretli kalemler kurum ihtiyacına göre ayrı fiyatlandırılır."
       />
-      <div className="mb-3">
+      <div className="mb-3 flex flex-wrap items-center gap-2.5">
         <Suspense fallback={<div className="h-[38px] w-[240px]" />}>
           <SearchInput placeholder="Ürün veya kalem ara..." />
         </Suspense>
+        <Suspense fallback={<div className="h-[38px] w-[220px]" />}>
+          <RegionTabs />
+        </Suspense>
       </div>
-      <div className="flex flex-col gap-6">
-        {priceLists.length === 0 && (
-          <div className="rounded-2xl border-[1.5px] border-dashed border-rg-line p-10 text-center text-[11.5px] text-rg-ink-faint">
-            {q ? "Aramanla eşleşen ürün veya kalem yok." : "Henüz fiyat listesi yok."}
-          </div>
-        )}
-        {priceLists.map((list) => (
-          <div key={list.id} className="overflow-hidden rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
-            <div className="flex items-center justify-between border-b border-rg-line bg-rg-surface-alt px-4 py-3">
-              <div className="flex items-center gap-2.5">
-                {PRODUCT_LOGO[list.product] ? (
-                  <Logo product={list.product as keyof typeof PRODUCT_LOGO} alt={PRODUCT_LABEL[list.product]} className="h-5 w-auto" />
-                ) : (
-                  <span className="font-display text-[13px] font-bold text-rg-ink">
-                    {PRODUCT_LABEL[list.product] ?? list.product}
-                  </span>
-                )}
-                <span className="text-[11.5px] text-rg-ink-faint">{list.name}</span>
-              </div>
-              <span className="text-[11px] font-semibold text-rg-ink-faint">{list.currency}</span>
-            </div>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="text-left">
-                  <th className="px-4 py-2 text-[10.5px] font-bold uppercase tracking-[.3px] text-rg-ink-faint">
-                    Kalem
-                  </th>
-                  <th className="px-4 py-2 text-[10.5px] font-bold uppercase tracking-[.3px] text-rg-ink-faint">
-                    Açıklama
-                  </th>
-                  <th className="px-4 py-2 text-[10.5px] font-bold uppercase tracking-[.3px] text-rg-ink-faint">
-                    Birim
-                  </th>
-                  <th className="px-4 py-2 text-right text-[10.5px] font-bold uppercase tracking-[.3px] text-rg-ink-faint">
-                    Birim Fiyat
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(list.price_list_items ?? []).map((item) => (
-                  <tr key={item.id} className="border-t border-rg-line">
-                    <td className="px-4 py-2.5 text-[12.5px] font-semibold text-rg-ink">{item.name}</td>
-                    <td className="px-4 py-2.5 text-[11.5px] text-rg-ink-faint">{item.description || "—"}</td>
-                    <td className="px-4 py-2.5 text-[12px] text-rg-ink-soft">{item.unit}</td>
-                    <td className="px-4 py-2.5 text-right text-[12.5px] font-semibold text-rg-ink">
-                      {item.unit_price > 0
-                        ? `${item.unit_price.toLocaleString("tr-TR")} ${list.currency}`
-                        : "Teklife özel"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
-      </div>
+      <PriceListsPanel priceLists={priceLists} canManage={canManage} restrictToRegion={restrictToRegion} />
     </>
   );
 }

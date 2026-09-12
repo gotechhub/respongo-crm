@@ -8,6 +8,13 @@ import { RegionTabs } from "@/components/ui/region-tabs";
 import { LeadsTable, type LeadRow } from "./leads-table";
 import { LeadsImportPanel } from "./import-panel";
 import { ApolloPanel } from "./apollo-panel";
+import { LeadsViewToggle } from "./view-toggle";
+import { LeadsKanbanBoard } from "./leads-kanban";
+
+// Pipeline (Kanban) görünümünde sayfalama yok — tüm aşamaları aynı anda
+// görmek pipeline'ın amacı olduğu için makul bir tavan ile (performans) TÜM
+// eşleşen lead'ler tek seferde çekilir.
+const KANBAN_FETCH_LIMIT = 500;
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,6 +42,7 @@ export default async function LeadsPage({
   const { page, pageSize, from, to } = parsePagination(searchParams);
   const q = typeof searchParams.q === "string" ? searchParams.q.trim() : "";
   const regionFilter = typeof searchParams.region === "string" ? (searchParams.region as Region) : "";
+  const view = searchParams.view === "kanban" ? "kanban" : "list";
 
   let query = supabase
     .from("leads")
@@ -51,7 +59,11 @@ export default async function LeadsPage({
     query = query.eq("region", regionFilter);
   }
 
-  const { data: leads, count } = await query.range(from, to);
+  // Pipeline görünümü tüm aşamaları aynı anda göstermek zorunda olduğundan
+  // sayfalama uygulanmaz (bir tavan dahilinde); Liste görünümü mevcut
+  // sayfalanmış davranışı aynen korur.
+  const { data: leads, count } =
+    view === "kanban" ? await query.limit(KANBAN_FETCH_LIMIT) : await query.range(from, to);
   const rows = (leads ?? []) as LeadRow[];
 
   const ownerIds = Array.from(new Set(rows.map((r) => r.owner_id).filter(Boolean))) as string[];
@@ -81,10 +93,17 @@ export default async function LeadsPage({
             <RegionTabs />
           </Suspense>
         )}
+        <Suspense fallback={<div className="h-[38px] w-[160px]" />}>
+          <LeadsViewToggle />
+        </Suspense>
       </div>
       <LeadsImportPanel isFounder={isFounder} isManager={isManager} currentRegion={currentRegion} />
       {isManager && <ApolloPanel configured={Boolean(process.env.APOLLO_API_KEY?.trim())} isFounder={isFounder} currentRegion={currentRegion} />}
-      <LeadsTable rows={rows} ownerNames={ownerNames} pagination={{ totalCount: count ?? 0, page, pageSize }} />
+      {view === "kanban" ? (
+        <LeadsKanbanBoard rows={rows} ownerNames={ownerNames} />
+      ) : (
+        <LeadsTable rows={rows} ownerNames={ownerNames} pagination={{ totalCount: count ?? 0, page, pageSize }} />
+      )}
     </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Eye, FileDown, Landmark, PenLine, ShieldCheck } from "lucide-react";
+import { CalendarClock, Eye, FileDown, Landmark, LifeBuoy, PenLine, ShieldCheck } from "lucide-react";
 import {
   PREVIEW_BANK_INFO,
   PREVIEW_CUSTOMER,
@@ -21,6 +21,12 @@ function title(section: V2Section | undefined, language: "tr" | "en", fallback: 
 }
 function scope(section: V2Section | undefined, language: "tr" | "en", field: "included" | "excluded", fallback: string[]) {
   const value = section?.content?.[`${field}_${language}`];
+  const cleaned =
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+  return cleaned.length > 0 ? cleaned : fallback;
+}
+function listContent(section: V2Section | undefined, language: "tr" | "en", key: string, fallback: string[]) {
+  const value = section?.content?.[`${key}_${language}`];
   const cleaned =
     Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
   return cleaned.length > 0 ? cleaned : fallback;
@@ -85,6 +91,31 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
     tr
       ? ["Kapsam dışı özel geliştirmeler", "Üçüncü taraf lisans ve altyapı bedelleri"]
       : ["Out-of-scope custom development", "Third-party license and infrastructure fees"]
+  );
+
+  const technicalItems = listContent(
+    find("technical_specs"),
+    language,
+    "items",
+    tr
+      ? ["Bulut tabanlı, kurulum gerektirmeyen erişim", "Aktarımda ve beklemede endüstri standardı şifreleme"]
+      : ["Cloud-based, no-install access", "Industry-standard encryption in transit and at rest"]
+  );
+  const implementationPhases = listContent(
+    find("implementation_timeline"),
+    language,
+    "phases",
+    tr
+      ? ["1. Hafta — Keşif ve plan", "2–3. Hafta — Kurulum ve test", "4. Hafta — Canlıya geçiş"]
+      : ["Week 1 — Discovery", "Weeks 2–3 — Configuration", "Week 4 — Go-live"]
+  );
+  const supportTiers = listContent(
+    find("support_sla"),
+    language,
+    "tiers",
+    tr
+      ? ["Kritik (P1): 7/24, ilk yanıt 2 saat içinde", "Normal (P3): ilk yanıt 1 iş günü içinde"]
+      : ["Critical (P1): 24/7, first response within 2 hours", "Normal (P3): first response within 1 business day"]
   );
 
   const legalSection = template.sections.find(
@@ -340,25 +371,71 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
               )}
             </section>
 
-            {/* 04 — UYGULAMA PLANI */}
+            {/* 04 — TEKNİK ÖZELLİKLER VE GÜVENLİK */}
             <section>
-              <p className="text-[10px] font-bold tracking-[.14em] text-primary">
-                04 · {tr ? "UYGULAMA PLANI" : "IMPLEMENTATION PLAN"}
-              </p>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <strong className="block text-primary">1. Hafta</strong>
-                  <span className="mt-1 block text-slate-500">{tr ? "Keşif ve plan" : "Discovery"}</span>
-                </div>
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <strong className="block text-primary">2–3. Hafta</strong>
-                  <span className="mt-1 block text-slate-500">{tr ? "Kurulum ve test" : "Configuration"}</span>
-                </div>
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <strong className="block text-primary">4. Hafta</strong>
-                  <span className="mt-1 block text-slate-500">{tr ? "Canlıya geçiş" : "Go-live"}</span>
-                </div>
+              <div className="mb-1 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <p className="text-[10px] font-bold tracking-[.14em] text-primary">
+                  04 · {title(find("technical_specs"), language, tr ? "TEKNİK ÖZELLİKLER VE GÜVENLİK" : "TECHNICAL SPECIFICATIONS & SECURITY")}
+                </p>
               </div>
+              <ul className="mt-3 grid gap-x-6 gap-y-2 text-[12px] leading-5 text-slate-600 sm:grid-cols-2">
+                {technicalItems.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {/* 05 — UYGULAMA PLANI */}
+            <section>
+              <div className="mb-1 flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-primary" />
+                <p className="text-[10px] font-bold tracking-[.14em] text-primary">
+                  05 · {title(find("implementation_timeline"), language, tr ? "UYGULAMA PLANI" : "IMPLEMENTATION PLAN")}
+                </p>
+              </div>
+              {/* Tailwind'in JIT tarayıcısı dinamik olarak birleştirilmiş sınıf adlarını (`sm:grid-cols-${n}`)
+                  YAKALAYAMAZ — bu yüzden olası sütun sayıları burada sabit, tam yazılmış sınıf adlarıyla
+                  bir haritada tutuluyor (aksi halde faz sayısı 3'ten farklı olan şablonlarda sütunlar hiç
+                  uygulanmaz, sessizce tek sütuna düşerdi). */}
+              <div
+                className={`mt-3 grid gap-2 text-center text-[11px] ${
+                  { 1: "sm:grid-cols-1", 2: "sm:grid-cols-2", 3: "sm:grid-cols-3", 4: "sm:grid-cols-4" }[
+                    Math.min(implementationPhases.length, 4) || 1
+                  ]
+                }`}
+              >
+                {implementationPhases.map((phase) => {
+                  const [head, ...rest] = phase.split("—").map((part) => part.trim());
+                  return (
+                    <div key={phase} className="rounded-lg bg-slate-50 p-3">
+                      <strong className="block text-primary">{head}</strong>
+                      {rest.length > 0 && <span className="mt-1 block text-slate-500">{rest.join(" — ")}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* 06 — DESTEK VE SLA */}
+            <section>
+              <div className="mb-1 flex items-center gap-2">
+                <LifeBuoy className="h-4 w-4 text-primary" />
+                <p className="text-[10px] font-bold tracking-[.14em] text-primary">
+                  06 · {title(find("support_sla"), language, tr ? "DESTEK VE HİZMET SEVİYESİ (SLA)" : "SUPPORT & SERVICE LEVEL AGREEMENT")}
+                </p>
+              </div>
+              <ul className="mt-3 space-y-2 text-[12px] leading-5 text-slate-600">
+                {supportTiers.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </section>
 
             {/* 05 — ÖDEME BİLGİLERİ */}

@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { ExternalLink, Loader2, Plus, Trash2, X } from "lucide-react";
+import { pickLocaleText, type UiLocale } from "@/lib/locale";
 import { createResource, deleteResource, type ResourceInput } from "./actions";
 
 export type ResourceRow = {
@@ -24,6 +25,15 @@ const CATEGORY_LABEL: Record<string, string> = {
   audience: "Hedef Kitle & Karar Verici",
 };
 
+const CATEGORY_LABEL_EN: Record<string, string> = {
+  general: "General",
+  sales_pitch: "Sales Pitch",
+  product: "Product Overview",
+  glossary: "Industry Glossary",
+  onboarding: "Onboarding",
+  audience: "Target Audience & Decision Makers",
+};
+
 function groupByCategory(rows: ResourceRow[]) {
   const groups: Record<string, ResourceRow[]> = {};
   rows.forEach((r) => {
@@ -33,7 +43,15 @@ function groupByCategory(rows: ResourceRow[]) {
   return groups;
 }
 
-export function ResourcesPanel({ resources, canManage }: { resources: ResourceRow[]; canManage: boolean }) {
+export function ResourcesPanel({
+  resources,
+  canManage,
+  locale,
+}: {
+  resources: ResourceRow[];
+  canManage: boolean;
+  locale: UiLocale;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ResourceInput>({
     category: "general",
@@ -169,13 +187,13 @@ export function ResourcesPanel({ resources, canManage }: { resources: ResourceRo
 
       {resources.length === 0 ? (
         <div className="rounded-2xl border-[1.5px] border-dashed border-rg-line p-10 text-center text-[12.5px] text-rg-ink-faint">
-          Henüz kaynak eklenmemiş.
+          {locale === "en" ? "No resources added yet." : "Henüz kaynak eklenmemiş."}
         </div>
       ) : (
         Object.entries(groups).map(([category, items]) => (
           <div key={category} className="rounded-2xl border border-rg-line bg-rg-surface shadow-rg">
             <div className="border-b border-rg-line px-5 py-3.5 text-[13px] font-bold text-rg-ink">
-              {CATEGORY_LABEL[category] ?? category}
+              {(locale === "en" ? CATEGORY_LABEL_EN[category] : CATEGORY_LABEL[category]) ?? category}
             </div>
             <div className="flex flex-col divide-y divide-rg-line">
               {items
@@ -184,9 +202,11 @@ export function ResourcesPanel({ resources, canManage }: { resources: ResourceRo
                   <div key={r.id} className="flex items-start justify-between gap-3 px-5 py-4">
                     <div className="min-w-0">
                       <div className="text-[12.8px] font-semibold text-rg-ink">
-                        {r.title_tr} <span className="text-rg-ink-faint">/ {r.title_en}</span>
+                        {pickLocaleText(locale, r.title_tr, r.title_en)}
                       </div>
-                      {r.body_tr && <p className="mt-1 text-[12px] text-rg-ink-soft">{r.body_tr}</p>}
+                      {(r.body_tr || r.body_en) && (
+                        <p className="mt-1 text-[12px] text-rg-ink-soft">{pickLocaleText(locale, r.body_tr, r.body_en)}</p>
+                      )}
                       {r.url && (
                         <a
                           href={r.url}
@@ -194,7 +214,7 @@ export function ResourcesPanel({ resources, canManage }: { resources: ResourceRo
                           rel="noreferrer"
                           className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-semibold text-primary hover:underline"
                         >
-                          Bağlantıyı aç <ExternalLink className="h-3 w-3" />
+                          {locale === "en" ? "Open link" : "Bağlantıyı aç"} <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
                     </div>

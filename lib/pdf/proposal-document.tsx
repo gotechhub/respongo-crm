@@ -180,6 +180,11 @@ function pick(lang: "tr" | "en", tr: string | null | undefined, en: string | nul
   return en || tr || "";
 }
 
+function pickList(lang: "tr" | "en", content: Record<string, unknown>, key: string): string[] {
+  const value = content[`${key}_${lang}`];
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v.trim().length > 0) : [];
+}
+
 function PageFooter({ lang }: { lang: "tr" | "en" }) {
   return (
     <View style={styles.footer} fixed>
@@ -235,6 +240,9 @@ export function ProposalPdfDocument({
   const coverSection = byType("cover");
   const scopeSection = byType("scope");
   const productSection = byType("product_info");
+  const technicalSection = byType("technical_specs");
+  const timelineSection = byType("implementation_timeline");
+  const supportSection = byType("support_sla");
   const legalSection = sections?.find((s) => s.section_type === "legal_terms" && s.legal_region === legalRegion) ?? null;
   const bankSection = byType("bank_info");
   const signatureSection = byType("signature");
@@ -457,6 +465,42 @@ export function ProposalPdfDocument({
           )}
           <Text style={extraStyles.extraTitle}>{pick(lang, productSection.title_tr, productSection.title_en)}</Text>
           <Text style={extraStyles.extraBody}>{pick(lang, productSection.body_tr, productSection.body_en)}</Text>
+          <PageFooter lang={lang} />
+        </Page>
+      )}
+
+      {technicalSection && (
+        <Page size="A4" style={extraStyles.extraPage}>
+          <Text style={extraStyles.extraTitle}>{pick(lang, technicalSection.title_tr, technicalSection.title_en)}</Text>
+          {pickList(lang, technicalSection.content, "items").map((line, i) => (
+            <Text key={i} style={extraStyles.listItem}>
+              • {line}
+            </Text>
+          ))}
+          <PageFooter lang={lang} />
+        </Page>
+      )}
+
+      {timelineSection && (
+        <Page size="A4" style={extraStyles.extraPage}>
+          <Text style={extraStyles.extraTitle}>{pick(lang, timelineSection.title_tr, timelineSection.title_en)}</Text>
+          {pickList(lang, timelineSection.content, "phases").map((line, i) => (
+            <Text key={i} style={extraStyles.listItem}>
+              • {line}
+            </Text>
+          ))}
+          <PageFooter lang={lang} />
+        </Page>
+      )}
+
+      {supportSection && (
+        <Page size="A4" style={extraStyles.extraPage}>
+          <Text style={extraStyles.extraTitle}>{pick(lang, supportSection.title_tr, supportSection.title_en)}</Text>
+          {pickList(lang, supportSection.content, "tiers").map((line, i) => (
+            <Text key={i} style={extraStyles.listItem}>
+              • {line}
+            </Text>
+          ))}
           <PageFooter lang={lang} />
         </Page>
       )}

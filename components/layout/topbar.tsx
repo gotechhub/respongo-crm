@@ -1,6 +1,7 @@
-import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { LocaleToggle } from "@/components/layout/locale-toggle";
+import { getUiLocale } from "@/lib/locale-server";
 import type { NotificationRow } from "@/app/(dashboard)/notifications/labels";
 
 // V2 Revizeler bölüm H: Bildirimler sistemde "her zaman açık" olacağı için bu
@@ -18,6 +19,7 @@ export async function Topbar({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const locale = getUiLocale();
 
   let notifications: NotificationRow[] = [];
   let unreadCount = 0;
@@ -47,18 +49,11 @@ export async function Topbar({
         {subtitle && <div className="text-[13px] text-rg-ink-soft">{subtitle}</div>}
       </div>
       <div className="flex items-center gap-2.5">
-        <div className="flex w-[220px] items-center gap-2 rounded-[10px] border border-rg-line bg-rg-surface px-3 py-2 text-[12.5px] text-rg-ink-faint">
-          <Search className="h-3.5 w-3.5" />
-          Ara...
-        </div>
-        <div className="flex overflow-hidden rounded-[10px] border border-rg-line bg-rg-surface">
-          <span className="bg-golms-tint px-[11px] py-2 text-[11.5px] font-semibold text-golms">
-            TR
-          </span>
-          <span className="px-[11px] py-2 text-[11.5px] font-semibold text-rg-ink-faint">
-            EN
-          </span>
-        </div>
+        {/* Eskiden burada dekoratif, hiçbir şey yapmayan sabit bir "Ara..."
+            kutusu vardı (gerçek bir <input> bile değildi). Kaldırıldı —
+            gerçek arama zaten her modülün kendi listesinde (SearchInput
+            bileşeni) çalışıyor; olmayan bir global arama vaat etmek yanıltıcıydı. */}
+        <LocaleToggle active={locale} />
         <NotificationBell initialNotifications={notifications} unreadCount={unreadCount} />
       </div>
     </div>

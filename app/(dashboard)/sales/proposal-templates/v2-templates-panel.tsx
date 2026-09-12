@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { deleteCustomTemplateSection, updateTemplateSection, type SectionInput, type TemplateProduct } from "./actions";
 
-const SECTION_LABEL: Record<string, string> = { cover: "Kapak", customer_info: "Müşteri bilgisi", scope: "Kapsam", product_info: "Ürün detayları", bank_info: "Banka bilgileri", signature: "Onay ve imza", custom: "Özel bölüm" };
+const SECTION_LABEL: Record<string, string> = { cover: "Kapak", customer_info: "Müşteri bilgisi", scope: "Kapsam", product_info: "Ürün detayları", technical_specs: "Teknik özellikler ve güvenlik", implementation_timeline: "Uygulama planı", support_sla: "Destek ve SLA", bank_info: "Banka bilgileri", signature: "Onay ve imza", custom: "Özel bölüm" };
 const inputClass = "w-full rounded-lg border border-rg-line bg-rg-surface px-3 py-2 text-[13px] text-rg-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 const labelClass = "text-[10px] font-bold uppercase tracking-[.08em] text-rg-ink-faint";
 
@@ -34,6 +34,15 @@ export function isSectionComplete(section: V2Section) {
   if (section.section_type === "legal_terms") {
     return section.legal_region === "us" ? Boolean(section.body_en) : Boolean(section.body_tr);
   }
+  if (section.section_type === "technical_specs") {
+    return lines(section.content.items_tr).length > 0 && lines(section.content.items_en).length > 0;
+  }
+  if (section.section_type === "implementation_timeline") {
+    return lines(section.content.phases_tr).length > 0 && lines(section.content.phases_en).length > 0;
+  }
+  if (section.section_type === "support_sla") {
+    return lines(section.content.tiers_tr).length > 0 && lines(section.content.tiers_en).length > 0;
+  }
   return Boolean((section.title_tr || section.body_tr) && (section.title_en || section.body_en));
 }
 
@@ -55,6 +64,12 @@ export function SectionWorkspace({ section, isFounder, onDeleted }: { section: V
   const [excludedTr, setExcludedTr] = useState(lines(section.content.excluded_tr));
   const [excludedEn, setExcludedEn] = useState(lines(section.content.excluded_en));
   const [bank, setBank] = useState({ bank_name: String(section.content.bank_name ?? ""), account_name: String(section.content.account_name ?? ""), iban: String(section.content.iban ?? ""), swift: String(section.content.swift ?? "") });
+  // technical_specs/implementation_timeline/support_sla — her biri tek bir TR + tek bir EN liste
+  // taşır (scope'un dahil/hariç ikilisinden farklı olarak tek listeli), o yüzden aynı iki state
+  // üç bölüm tipi arasında paylaşılıyor (bir SectionWorkspace her zaman TEK bir bölümü düzenler).
+  const singleListKey = section.section_type === "technical_specs" ? "items" : section.section_type === "implementation_timeline" ? "phases" : section.section_type === "support_sla" ? "tiers" : null;
+  const [singleListTr, setSingleListTr] = useState(singleListKey ? lines(section.content[`${singleListKey}_tr`]) : []);
+  const [singleListEn, setSingleListEn] = useState(singleListKey ? lines(section.content[`${singleListKey}_en`]) : []);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const router = useRouter();
@@ -69,6 +84,9 @@ export function SectionWorkspace({ section, isFounder, onDeleted }: { section: V
     setExcludedTr(lines(section.content.excluded_tr));
     setExcludedEn(lines(section.content.excluded_en));
     setBank({ bank_name: String(section.content.bank_name ?? ""), account_name: String(section.content.account_name ?? ""), iban: String(section.content.iban ?? ""), swift: String(section.content.swift ?? "") });
+    const key = section.section_type === "technical_specs" ? "items" : section.section_type === "implementation_timeline" ? "phases" : section.section_type === "support_sla" ? "tiers" : null;
+    setSingleListTr(key ? lines(section.content[`${key}_tr`]) : []);
+    setSingleListEn(key ? lines(section.content[`${key}_en`]) : []);
   }, [section]);
 
   const content = useMemo(() => {
@@ -82,8 +100,15 @@ export function SectionWorkspace({ section, isFounder, onDeleted }: { section: V
       };
     }
     if (section.section_type === "bank_info") return { ...section.content, ...bank };
+    if (singleListKey) {
+      return {
+        ...section.content,
+        [`${singleListKey}_tr`]: singleListTr.map((x) => x.trim()).filter(Boolean),
+        [`${singleListKey}_en`]: singleListEn.map((x) => x.trim()).filter(Boolean),
+      };
+    }
     return section.content;
-  }, [section, includedTr, includedEn, excludedTr, excludedEn, bank]);
+  }, [section, includedTr, includedEn, excludedTr, excludedEn, bank, singleListKey, singleListTr, singleListEn]);
 
   function save() {
     setMessage("");
@@ -107,6 +132,8 @@ export function SectionWorkspace({ section, isFounder, onDeleted }: { section: V
   const legal = section.section_type === "legal_terms";
   const isScope = section.section_type === "scope";
   const isBank = section.section_type === "bank_info";
+  const isSingleList = Boolean(singleListKey);
+  const singleListTitle = singleListKey === "items" ? "Madde" : singleListKey === "phases" ? "Aşama" : "Seviye";
   const langBadge = "inline-block rounded-full bg-rg-surface px-2 py-0.5 text-[10px] font-bold text-rg-ink-soft";
   const langCol = "space-y-3 rounded-xl border border-rg-line bg-rg-surface-alt p-3.5";
 
@@ -155,7 +182,7 @@ export function SectionWorkspace({ section, isFounder, onDeleted }: { section: V
           </div>
         )}
 
-        {!isScope && !isBank && (
+        {!isScope && !isBank && !isSingleList && (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className={langCol}>
               <span className={langBadge}>Türkçe</span>
@@ -207,6 +234,19 @@ export function SectionWorkspace({ section, isFounder, onDeleted }: { section: V
               <span className={langBadge}>English</span>
               <ListField title="Included" value={includedEn} onChange={setIncludedEn} disabled={!isFounder} />
               <ListField title="Excluded" value={excludedEn} onChange={setExcludedEn} disabled={!isFounder} />
+            </div>
+          </div>
+        )}
+
+        {isSingleList && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className={langCol}>
+              <span className={langBadge}>Türkçe</span>
+              <ListField title={`${singleListTitle} (Türkçe)`} value={singleListTr} onChange={setSingleListTr} disabled={!isFounder} />
+            </div>
+            <div className={langCol}>
+              <span className={langBadge}>English</span>
+              <ListField title={`${singleListTitle} (English)`} value={singleListEn} onChange={setSingleListEn} disabled={!isFounder} />
             </div>
           </div>
         )}
