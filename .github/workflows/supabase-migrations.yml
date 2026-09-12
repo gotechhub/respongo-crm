@@ -1,9 +1,15 @@
-name: Apply Supabase migrations
+﻿name: Apply Supabase migrations
 
 on:
   push:
     branches: [main]
     paths: ["supabase/migrations/**"]
+  # Manuel tetikleme: gecmiste elle (Supabase dashboard uzerinden) uygulanmis
+  # migration dosyalarinin yerel repoda karsiligi olmadigi icin CI hata
+  # veriyordu. Bu duzeltmeyi migrations klasorune dokunmadan tetikleyebilmek
+  # icin workflow_dispatch eklendi (Actions sekmesinde Run workflow butonu
+  # olarak gorunur).
+  workflow_dispatch: {}
 
 concurrency:
   group: supabase-production-migrations
@@ -20,6 +26,16 @@ jobs:
       - name: Apply production migrations
         run: |
           supabase link --project-ref bbixxigossxtjctjxfyg --password "$SUPABASE_DB_PASSWORD"
+          # Gecmiste elle (Supabase Dashboard SQL Editor uzerinden) uygulanmis
+          # yaklasik 32 migration, yerel supabase/migrations klasorunde dosya
+          # olarak bulunmuyor. CLI bu yuzden remote migration versions not
+          # found in local migrations directory diyerek db push islemini
+          # reddediyor. Asagidaki repair komutu SADECE CLI programinin ic
+          # takip tablosunu (schema_migrations) guncelliyor, veritabanindaki
+          # gercek tablo ve kolonlari silmiyor veya degistirmiyor. Sonundaki
+          # || true sayesinde, bir sonraki calistirmada kayitlar zaten
+          # reverted oldugu icin bu satir hata verse bile is akisi durmaz.
+          supabase migration repair --status reverted 20260830144014 20260830145718 20260901122645 20260901123917 20260901134318 20260901181746 20260901183330 20260901183523 20260901183556 20260901184506 20260901191230 20260901191329 20260901191408 20260901191434 20260902075739 20260902085950 20260902090501 20260902093155 20260902134048 20260902142459 20260902142622 20260902142733 20260902184010 20260903031733 20260903031804 20260903035418 20260903035538 20260903043035 20260903043304 20260903094752 20260903161433 20260908210215 || true
           supabase db push --linked --include-all
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
