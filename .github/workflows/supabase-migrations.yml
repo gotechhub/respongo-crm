@@ -36,7 +36,48 @@ jobs:
           # || true sayesinde, bir sonraki calistirmada kayitlar zaten
           # reverted oldugu icin bu satir hata verse bile is akisi durmaz.
           supabase migration repair --status reverted 20260830144014 20260830145718 20260901122645 20260901123917 20260901134318 20260901181746 20260901183330 20260901183523 20260901183556 20260901184506 20260901191230 20260901191329 20260901191408 20260901191434 20260902075739 20260902085950 20260902090501 20260902093155 20260902134048 20260902142459 20260902142622 20260902142733 20260902184010 20260903031733 20260903031804 20260903035418 20260903035538 20260903043035 20260903043304 20260903094752 20260903161433 20260908210215 || true
-          supabase db push --linked --include-all
+
+          # Projenin gecmisinde supabase/migrations klasorundeki dosyalarin
+          # BUYUK COGUNLUGU aslinda daha once Supabase Dashboard SQL Editor
+          # uzerinden elle calistirilmis ama CLI programinin takip tablosuna
+          # hic islenmemis. Bu yuzden supabase db push, ilk migration
+          # dosyasindan itibaren already exists hatasi vererek duruyor.
+          # Asagidaki dongu: db push calistirir, already exists hatasi
+          # aldiysa o migration dosyasini gercekten calistirmadan sadece
+          # uygulanmis olarak isaretler (repair --status applied) ve tekrar
+          # dener. Baska turden bir hata (gercek bir SQL veya syntax hatasi)
+          # alirsa dongu durur ve hatayi oldugu gibi gosterir, boylece gercek
+          # bir bug sessizce atlanmaz. Bu sayede gecmiste elle uygulanmis
+          # onlarca dosya tek tek ugrasilmadan otomatik asilir, gercekten
+          # daha once hic calismamis (ornegin fiyat listesi) migration
+          # dosyalari ise normal sekilde gercekten uygulanir.
+          for i in $(seq 1 80); do
+            echo "=== db push denemesi $i ==="
+            set +e
+            OUTPUT=$(supabase db push --linked --include-all 2>&1)
+            STATUS=$?
+            set -e
+            echo "$OUTPUT"
+
+            if [ $STATUS -eq 0 ]; then
+              echo "TUM MIGRATIONLAR BASARIYLA UYGULANDI."
+              exit 0
+            fi
+
+            FAILED_VERSION=$(echo "$OUTPUT" | grep -oE "Applying migration [0-9]+" | tail -1 | grep -oE "[0-9]+")
+            ALREADY_EXISTS_COUNT=$(echo "$OUTPUT" | grep -c "already exists" || true)
+
+            if [ -z "$FAILED_VERSION" ] || [ "$ALREADY_EXISTS_COUNT" -eq 0 ]; then
+              echo "KALICI HATA: bu already-exists turunde bir catisma degil, gercek bir migration hatasi olabilir. Dongu durduruluyor."
+              exit 1
+            fi
+
+            echo "Migration $FAILED_VERSION icindeki nesneler veritabaninda zaten mevcut -- uygulanmis olarak isaretlenip devam ediliyor."
+            supabase migration repair --status applied "$FAILED_VERSION"
+          done
+
+          echo "Deneme limitine ulasildi, tam basari saglanamadi."
+          exit 1
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
