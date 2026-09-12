@@ -185,6 +185,25 @@ function pickList(lang: "tr" | "en", content: Record<string, unknown>, key: stri
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v.trim().length > 0) : [];
 }
 
+// V6 (2026-09-12) — teknik özellikler artık kategorilere ayrılmış olabilir (content.groups).
+// Eski (kategorisiz) şablonlarda content.groups yoksa düz items_tr/items_en tek kategori olarak
+// gösterilir — hiçbir zaman boş kalmaz.
+function pickGroups(lang: "tr" | "en", content: Record<string, unknown>): { label: string; items: string[] }[] {
+  const groups = content.groups;
+  if (Array.isArray(groups) && groups.length > 0) {
+    return (groups as Array<Record<string, unknown>>)
+      .map((g) => ({
+        label: String((lang === "tr" ? g.label_tr : g.label_en) ?? ""),
+        items: Array.isArray(g[`items_${lang}`])
+          ? (g[`items_${lang}`] as unknown[]).filter((v): v is string => typeof v === "string")
+          : [],
+      }))
+      .filter((g) => g.items.length > 0);
+  }
+  const flat = pickList(lang, content, "items");
+  return flat.length > 0 ? [{ label: "", items: flat }] : [];
+}
+
 function PageFooter({ lang }: { lang: "tr" | "en" }) {
   return (
     <View style={styles.footer} fixed>
@@ -276,7 +295,7 @@ export function ProposalPdfDocument({
           </View>
           <View>
             <Text style={extraStyles.coverEyebrow}>{lang === "tr" ? "RESPONGO · TEKLİF" : "RESPONGO · PROPOSAL"} · {reference}</Text>
-            <Text style={extraStyles.coverPreparedFor}>{lang === "tr" ? "HAZIRLANAN" : "PREPARED FOR"}</Text>
+            <Text style={extraStyles.coverPreparedFor}>{lang === "tr" ? "MÜŞTERİ BİLGİLERİ" : "PREPARED FOR"}</Text>
             <Text style={extraStyles.coverTitle}>{target?.company_name ?? proposal.title}</Text>
             <Text style={extraStyles.coverBody}>
               {coverSection
@@ -472,10 +491,15 @@ export function ProposalPdfDocument({
       {technicalSection && (
         <Page size="A4" style={extraStyles.extraPage}>
           <Text style={extraStyles.extraTitle}>{pick(lang, technicalSection.title_tr, technicalSection.title_en)}</Text>
-          {pickList(lang, technicalSection.content, "items").map((line, i) => (
-            <Text key={i} style={extraStyles.listItem}>
-              • {line}
-            </Text>
+          {pickGroups(lang, technicalSection.content).map((group, gi) => (
+            <View key={gi} style={{ marginBottom: 10 }}>
+              {group.label ? <Text style={extraStyles.listHeading}>{group.label}</Text> : null}
+              {group.items.map((line, i) => (
+                <Text key={i} style={extraStyles.listItem}>
+                  • {line}
+                </Text>
+              ))}
+            </View>
           ))}
           <PageFooter lang={lang} />
         </Page>

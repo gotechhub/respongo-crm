@@ -5,6 +5,7 @@ import { CalendarClock, Eye, FileDown, Landmark, LifeBuoy, PenLine, ShieldCheck 
 import {
   PREVIEW_BANK_INFO,
   PREVIEW_CUSTOMER,
+  formatPreviewDate,
   formatPreviewPrice,
   previewLines,
   previewVatRate,
@@ -101,6 +102,18 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
       ? ["Bulut tabanlı, kurulum gerektirmeyen erişim", "Aktarımda ve beklemede endüstri standardı şifreleme"]
       : ["Cloud-based, no-install access", "Industry-standard encryption in transit and at rest"]
   );
+  // V6: teknik özellikler artık kategorilere ayrılmış (Güvenlik/Altyapı/Entegrasyon/Erişilebilirlik).
+  // Eski şablonlarda (henüz kategorisiz, sadece düz items_tr/items_en) content.groups yoksa,
+  // düz listeyi tek bir genel kategori altında gösteririz — hiçbir zaman boş kalmaz.
+  const rawTechnicalGroups = find("technical_specs")?.content?.groups;
+  const technicalGroups: { label: string; items: string[] }[] = Array.isArray(rawTechnicalGroups) && rawTechnicalGroups.length > 0
+    ? (rawTechnicalGroups as Array<Record<string, unknown>>).map((g) => ({
+        label: String((tr ? g.label_tr : g.label_en) ?? ""),
+        items: Array.isArray(g[tr ? "items_tr" : "items_en"])
+          ? (g[tr ? "items_tr" : "items_en"] as unknown[]).filter((v): v is string => typeof v === "string")
+          : [],
+      })).filter((g) => g.items.length > 0)
+    : [{ label: tr ? "Genel" : "General", items: technicalItems }];
   const implementationPhases = listContent(
     find("implementation_timeline"),
     language,
@@ -165,17 +178,17 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
                 <div className="text-[10px] font-bold tracking-[.18em] text-white/65">
                   RESPONGO · {PREVIEW_CUSTOMER.reference}
                 </div>
-                <p className="mt-6 text-[12px] text-white/70">{tr ? "HAZIRLANAN" : "PREPARED FOR"}</p>
+                <p className="mt-6 text-[12px] text-white/70">{tr ? "MÜŞTERİ BİLGİLERİ" : "PREPARED FOR"}</p>
                 <h3 className="mt-2 font-display text-3xl font-bold leading-tight">{PREVIEW_CUSTOMER.company}</h3>
                 <p className="mt-6 max-w-md text-[14px] leading-6 text-white/85">{coverLetter}</p>
                 <div className="mt-8 flex gap-8 text-[11px] text-white/65">
                   <span>
                     {tr ? "Hazırlayan" : "Prepared by"}
-                    <strong className="mt-1 block text-white">{PREVIEW_CUSTOMER.preparedBy}</strong>
+                    <strong className="mt-1 block text-white">{tr ? PREVIEW_CUSTOMER.preparedByTr : PREVIEW_CUSTOMER.preparedByEn}</strong>
                   </span>
                   <span>
                     {tr ? "Geçerlilik" : "Valid until"}
-                    <strong className="mt-1 block text-white">{PREVIEW_CUSTOMER.validUntil}</strong>
+                    <strong className="mt-1 block text-white">{formatPreviewDate(PREVIEW_CUSTOMER.validUntilDate, language)}</strong>
                   </span>
                 </div>
               </div>
@@ -202,7 +215,7 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <span className="text-[10px] text-slate-500">{tr ? "İlgili Kişi" : "Contact"}</span>
-                  <strong className="mt-1 block text-[13px] text-slate-800">{PREVIEW_CUSTOMER.contact}</strong>
+                  <strong className="mt-1 block text-[13px] text-slate-800">{tr ? PREVIEW_CUSTOMER.contactTr : PREVIEW_CUSTOMER.contactEn}</strong>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <span className="text-[10px] text-slate-500">{tr ? "E-posta" : "Email"}</span>
@@ -210,7 +223,7 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <span className="text-[10px] text-slate-500">{tr ? "Tarih" : "Date"}</span>
-                  <strong className="mt-1 block text-[13px] text-slate-800">{PREVIEW_CUSTOMER.preparedDate}</strong>
+                  <strong className="mt-1 block text-[13px] text-slate-800">{formatPreviewDate(PREVIEW_CUSTOMER.preparedDate, language)}</strong>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <span className="text-[10px] text-slate-500">{tr ? "Para Birimi" : "Currency"}</span>
@@ -218,7 +231,7 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <span className="text-[10px] text-slate-500">{tr ? "Hazırlayan" : "Prepared by"}</span>
-                  <strong className="mt-1 block text-[13px] text-slate-800">{PREVIEW_CUSTOMER.preparedBy}</strong>
+                  <strong className="mt-1 block text-[13px] text-slate-800">{tr ? PREVIEW_CUSTOMER.preparedByTr : PREVIEW_CUSTOMER.preparedByEn}</strong>
                 </div>
               </div>
               {distinctProductKeys.length > 0 && (
@@ -301,21 +314,24 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
                     {rows.map((row) => {
                       const gross = row.quantity * row.unitPrice;
                       const net = gross * (1 - (row.discountPercent ?? 0) / 100);
+                      const rowName = tr ? row.nameTr : row.nameEn;
                       return (
-                        <tr key={row.name} className="border-t border-slate-100">
+                        <tr key={rowName} className="border-t border-slate-100">
                           <td className="px-3 py-3">
-                            <strong className="block text-[12px] text-slate-800">{row.name}</strong>
-                            <span className="text-[10px] text-slate-500">{row.description}</span>
+                            <strong className="block text-[12px] text-slate-800">{rowName}</strong>
+                            <span className="text-[10px] text-slate-500">{tr ? row.descriptionTr : row.descriptionEn}</span>
                           </td>
-                          <td className="px-3 py-3 text-center text-[12px] text-slate-600">{row.quantity}</td>
+                          <td className="px-3 py-3 text-center text-[12px] text-slate-600">
+                            {row.quantity} {tr ? row.unitTr : row.unitEn}
+                          </td>
                           <td className="px-3 py-3 text-right text-[12px] text-slate-600">
-                            {formatPreviewPrice(row.unitPrice, row.currency)}
+                            {formatPreviewPrice(row.unitPrice, row.currency, language)}
                           </td>
                           <td className="px-3 py-3 text-right text-[12px] text-slate-600">
                             {row.discountPercent ? `%${row.discountPercent}` : "—"}
                           </td>
                           <td className="px-3 py-3 text-right text-[12px] font-semibold text-slate-800">
-                            {formatPreviewPrice(net, row.currency)}
+                            {formatPreviewPrice(net, row.currency, language)}
                           </td>
                         </tr>
                       );
@@ -340,33 +356,34 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
                       <div className="space-y-1 text-[11px] text-slate-300">
                         <div className="flex items-center justify-between">
                           <span>{tr ? "Ara Toplam" : "Subtotal"}</span>
-                          <span>{formatPreviewPrice(gross, currency)}</span>
+                          <span>{formatPreviewPrice(gross, currency, language)}</span>
                         </div>
                         {discount > 0.5 && (
                           <div className="flex items-center justify-between">
                             <span>{tr ? "İskonto" : "Discount"}</span>
-                            <span>-{formatPreviewPrice(discount, currency)}</span>
+                            <span>-{formatPreviewPrice(discount, currency, language)}</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between">
                           <span>{tr ? `KDV (%${vatRate})` : `VAT (${vatRate}%)`}</span>
-                          <span>{formatPreviewPrice(vatAmount, currency)}</span>
+                          <span>{formatPreviewPrice(vatAmount, currency, language)}</span>
                         </div>
                       </div>
                       <div className="mt-2 flex items-center justify-between border-t border-white/15 pt-2">
                         <span className="text-[10px] uppercase text-slate-300">
                           {tr ? "Genel Toplam" : "Grand Total"}
                         </span>
-                        <strong className="text-[15px]">{formatPreviewPrice(grandTotal, currency)}</strong>
+                        <strong className="text-[15px]">{formatPreviewPrice(grandTotal, currency, language)}</strong>
                       </div>
                     </div>
                   );
                 })}
               </div>
-              {tr && currencies.includes("TRY") && (
+              {currencies.includes("TRY") && (
                 <p className="mt-2 text-right text-[10px] text-slate-400">
-                  Yurt içi kalemlerde varsayılan %20 KDV gösterilir; ihracat/yurt dışı kalemlerde KDV istisnası (%0)
-                  uygulanır. Gerçek teklifte oran her zaman düzenlenebilir.
+                  {tr
+                    ? "Yurt içi kalemlerde varsayılan %20 KDV gösterilir; ihracat/yurt dışı kalemlerde KDV istisnası (%0) uygulanır. Gerçek teklifte oran her zaman düzenlenebilir."
+                    : "Domestic (TRY) line items default to 20% VAT; export/international items are zero-rated (0%). The rate is always editable on the actual proposal."}
                 </p>
               )}
             </section>
@@ -379,14 +396,21 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
                   04 · {title(find("technical_specs"), language, tr ? "TEKNİK ÖZELLİKLER VE GÜVENLİK" : "TECHNICAL SPECIFICATIONS & SECURITY")}
                 </p>
               </div>
-              <ul className="mt-3 grid gap-x-6 gap-y-2 text-[12px] leading-5 text-slate-600 sm:grid-cols-2">
-                {technicalItems.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
-                    {item}
-                  </li>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {technicalGroups.map((group) => (
+                  <div key={group.label} className="rounded-lg bg-slate-50 p-3.5">
+                    <h5 className="text-[10.5px] font-bold uppercase tracking-[.06em] text-slate-500">{group.label}</h5>
+                    <ul className="mt-2 space-y-1.5 text-[12px] leading-5 text-slate-600">
+                      {group.items.map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </section>
 
             {/* 05 — UYGULAMA PLANI */}
@@ -504,7 +528,9 @@ export function TemplatePreview({ template, language = "tr" }: { template: V2Tem
             </section>
 
             <footer className="border-t border-slate-100 pt-5 text-[10px] text-slate-400">
-              Respongo · Learning technologies for measurable performance · {PREVIEW_CUSTOMER.reference}
+              {tr
+                ? `Respongo · Ölçülebilir performans için öğrenme teknolojileri · ${PREVIEW_CUSTOMER.reference}`
+                : `Respongo · Learning technologies for measurable performance · ${PREVIEW_CUSTOMER.reference}`}
             </footer>
           </div>
         </article>

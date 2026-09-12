@@ -5,6 +5,7 @@ import type { ProfileRow, Region } from "@/lib/roles";
 import { SystemSettingsForm } from "./settings-form";
 import { ViewAsPanel } from "./view-as-panel";
 import { DemoDataPanel } from "./demo-data-panel";
+import { TestAccountsPanel } from "./test-accounts-panel";
 import type { SystemSettingsInput } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +115,11 @@ export default async function SystemSettingsPage() {
             Şirket genelinde geçerli varsayılanlar — tüm kullanıcılar bu ayarları okuyabilir, sadece Süper Admin değiştirebilir.
           </p>
           <SystemSettingsForm initial={initialSettings} />
+        </div>
+
+        <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">
+          <div className="mb-1 text-[14px] font-bold text-rg-ink">Test Hesapları</div>
+          <TestAccountsPanel />
         </div>
 
         <div className="rounded-2xl border border-rg-line bg-rg-surface p-5 shadow-rg">

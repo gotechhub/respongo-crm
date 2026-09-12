@@ -106,10 +106,41 @@ legal_draft(body_tr, body_en) as (
 • Termination: Either party may terminate for uncured material breach following 30 days'' written notice.
 • Confidentiality: Each party will keep the other''s confidential business and technical information disclosed under this proposal confidential, on a mutual basis.
 • Intellectual Property: Respongo retains all intellectual property rights in its platforms and infrastructure; the customer retains rights to its own data and to content it produces on the platform.
-• Data Protection: The parties will meet their obligations under applicable data protection law (including GDPR where applicable); a separate Data Processing Agreement (DPA) can be executed to govern the details.
+• Data Protection: The parties will meet their obligations under the Turkish Personal Data Protection Law (KVKK No. 6698); a separate Data Processing Agreement (DPA) can be executed to govern the details.
 • Limitation of Liability: Respongo''s total liability under any agreement resulting from this proposal is capped at the fees paid in the preceding 12 months, excluding indirect or consequential damages.
 • Force Majeure: Neither party is liable for failure to perform due to causes beyond its reasonable control.
 • Governing Law & Jurisdiction: This proposal and any resulting agreement are governed by the laws of the Republic of Türkiye; disputes are subject to the courts and execution offices of Istanbul (Merkez), unless the definitive agreement specifies otherwise.
+• Validity: This proposal is valid for 30 days from the date of preparation.'
+  )
+),
+-- V6 (2026-09-12) düzeltmesi: legal_region='us' (Global) satırı artık gerçekten farklı bir
+-- taslak alıyor — önceki sürümde legal_draft ile BİREBİR AYNI (sadece başlığı farklı) Türkiye
+-- şartları kullanılıyordu. Bkz. lib/proposals/template-studio.ts LEGAL_GLOBAL_BODY_TR/EN.
+legal_global_draft(body_tr, body_en) as (
+  values (
+    '[TASLAK — bu bölüm hukuk danışmanınızca onaylanmadan yürürlüğe girmemelidir]
+
+• Ödeme Şartları: Faturalar USD veya EUR olarak düzenlenir; ödeme vadesi, aksi kararlaştırılmadıkça fatura tarihinden itibaren 30 gündür. Banka transfer masrafları alıcıya aittir.
+• Yenileme: Lisans/hizmet süresi sona ermeden en az 30 gün önce taraflardan biri yazılı olarak fesih bildirmediği sürece sözleşme aynı şartlarla 1 yıl daha uzar.
+• Fesih: Taraflardan biri esaslı bir yükümlülüğünü ihlal eder ve 30 günlük yazılı ihtara rağmen düzeltmezse, diğer taraf sözleşmeyi feshedebilir.
+• Gizlilik: Taraflar, işbu teklif kapsamında öğrendikleri ticari ve teknik bilgileri üçüncü kişilerle paylaşmayacak, karşılıklı gizlilik yükümlülüğüne uyacaktır.
+• Fikri Mülkiyet: Respongo platformları ve alt yapısına ait tüm fikri mülkiyet hakları Respongo''ya aittir; müşteri kendi verileri ve platformda ürettiği içerik üzerindeki haklarını korur.
+• Kişisel Verilerin Korunması: Respongo, müşterinin bulunduğu ülkede uygulanabilir olduğu ölçüde Genel Veri Koruma Tüzüğü''ne (GDPR) uygun bir veri işleme yaklaşımı benimser; detaylar ayrı bir Veri İşleme Sözleşmesi (DPA) ile belirlenebilir.
+• Sorumluluk Sınırı: Respongo''nun bu teklife dayalı sözleşmeden doğan toplam sorumluluğu, ilgili 12 aylık dönemde ödenen toplam bedeli aşamaz; dolaylı zararlar kapsam dışıdır.
+• Mücbir Sebep: Taraflar, makul kontrolleri dışındaki mücbir sebep hallerinde yükümlülüklerini yerine getirememekten sorumlu tutulamaz.
+• Uygulanacak Hukuk ve Uyuşmazlık Çözümü: İşbu teklife ve doğacak sözleşmeye Türkiye Cumhuriyeti hukuku uygulanır; taraflar arasındaki uyuşmazlıklar, aksi kararlaştırılmadıkça İstanbul''da, İngilizce dilinde, tek hakemli tahkim yoluyla çözülür.
+• Geçerlilik: Bu teklif, hazırlanma tarihinden itibaren 30 gün geçerlidir.',
+    '[DRAFT — this section must be reviewed and approved by your legal counsel before it takes effect]
+
+• Payment Terms: Invoices are issued in USD or EUR; payment is due within 30 days of the invoice date unless otherwise agreed. Bank transfer fees are borne by the payer.
+• Renewal: Unless either party gives written notice of termination at least 30 days before the term ends, the agreement automatically renews for a further 1-year term under the same terms.
+• Termination: Either party may terminate for uncured material breach following 30 days'' written notice.
+• Confidentiality: Each party will keep the other''s confidential business and technical information disclosed under this proposal confidential, on a mutual basis.
+• Intellectual Property: Respongo retains all intellectual property rights in its platforms and infrastructure; the customer retains rights to its own data and to content it produces on the platform.
+• Data Protection: Respongo adopts a data processing approach aligned with the General Data Protection Regulation (GDPR) to the extent applicable in the customer''s jurisdiction; details can be governed by a separate Data Processing Agreement (DPA).
+• Limitation of Liability: Respongo''s total liability under any agreement resulting from this proposal is capped at the fees paid in the preceding 12 months, excluding indirect or consequential damages.
+• Force Majeure: Neither party is liable for failure to perform due to causes beyond its reasonable control.
+• Governing Law & Dispute Resolution: This proposal and any resulting agreement are governed by the laws of the Republic of Türkiye; unless otherwise agreed, disputes are finally resolved by sole-arbitrator arbitration seated in Istanbul, conducted in English.
 • Validity: This proposal is valid for 30 days from the date of preparation.'
   )
 )
@@ -118,6 +149,7 @@ select t.id, x.section_type, x.legal_region, x.sort_order, x.title_tr, x.title_e
 from public.proposal_templates t
 join product_copy pc on pc.product = coalesce(t.product::text, 'general')
 cross join legal_draft ld
+cross join legal_global_draft lgd
 cross join lateral (
   values
     ('cover', null::text, 10, 'Teklif', 'Proposal', pc.cover_tr, pc.cover_en,
@@ -128,7 +160,7 @@ cross join lateral (
     ('product_info', null::text, 40, 'Çözüm Hakkında', 'About the solution', pc.product_tr, pc.product_en,
       jsonb_build_object('cover_image', pc.cover_image, 'accent', pc.accent)),
     ('legal_terms', 'tr', 50, 'Ticari ve Hukuki Şartlar', 'Commercial & legal terms', ld.body_tr, ld.body_en, jsonb_build_object('review_required', true)),
-    ('legal_terms', 'us', 60, 'Uluslararası Ticari ve Hukuki Şartlar', 'International commercial & legal terms', ld.body_tr, ld.body_en, jsonb_build_object('review_required', true)),
+    ('legal_terms', 'us', 60, 'Uluslararası Ticari ve Hukuki Şartlar', 'International commercial & legal terms', lgd.body_tr, lgd.body_en, jsonb_build_object('review_required', true)),
     ('bank_info', null::text, 70, 'Ödeme Bilgileri', 'Payment details', '', '',
       jsonb_build_object('bank_name', '', 'account_name', '', 'iban', '', 'swift', '', 'currency', '')),
     ('signature', null::text, 80, 'Onay', 'Acceptance', '', '', '{}'::jsonb)

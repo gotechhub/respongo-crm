@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { ViewAsBanner } from "@/components/layout/view-as-banner";
 import { createClient } from "@/lib/supabase/server";
 import { isViewAsActive } from "@/lib/view-as/actions";
+import { getUiLocale } from "@/lib/locale-server";
 import type { ProfileRow } from "@/lib/roles";
 
 // Bu layout kullanıcının rolünü/bölgesini her istekte veritabanından taze
@@ -81,6 +82,7 @@ export default async function DashboardLayout({
   }
 
   const viewAsActive = await isViewAsActive();
+  const locale = getUiLocale();
   const { data: sysSettings } = await supabase
     .from("system_settings")
     .select("maintenance_mode, maintenance_message")
@@ -90,7 +92,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="grid min-h-screen grid-cols-[264px_1fr] bg-rg-bg">
-      <Sidebar profile={typedProfile} />
+      <Sidebar profile={typedProfile} locale={locale} />
       <div className="flex min-w-0 flex-col">
         {viewAsActive && <ViewAsBanner name={typedProfile.full_name || typedProfile.email} role={typedProfile.role} />}
         {maintenance?.maintenance_mode && (

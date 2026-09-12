@@ -5,7 +5,9 @@ import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_LABEL } from "@/lib/product-labels";
 import { RenewalPanel, type RenewalRow } from "./renewal-panel";
-import type { LicenseStatus } from "../actions";
+import { LicenseEditPanel } from "./license-edit-panel";
+import type { AcceptedProposal, CustomerOption } from "../license-form";
+import type { LicenseInput, LicenseStatus } from "../actions";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -48,7 +50,14 @@ export default async function LicenseDetailPage({ params }: { params: { id: stri
     notFound();
   }
 
-  const [{ data: customer }, { data: proposal }, { data: renewalsRaw }, { data: ownerRows }] = await Promise.all([
+  const [
+    { data: customer },
+    { data: proposal },
+    { data: renewalsRaw },
+    { data: ownerRows },
+    { data: customerRows },
+    { data: acceptedProposals },
+  ] = await Promise.all([
     supabase.from("customers").select("id, company_name").eq("id", license.customer_id).single(),
     license.proposal_id
       ? supabase.from("proposals").select("id, title").eq("id", license.proposal_id).single()
@@ -62,6 +71,13 @@ export default async function LicenseDetailPage({ params }: { params: { id: stri
       .from("profiles")
       .select("id, full_name, email")
       .in("id", Array.from(new Set([license.owner_id, license.created_by].filter(Boolean)))),
+    supabase.from("customers").select("id, company_name").order("company_name", { ascending: true }).limit(500),
+    supabase
+      .from("proposals")
+      .select("id, title, customer_id, total_amount, currency")
+      .eq("status", "accepted")
+      .order("created_at", { ascending: false })
+      .limit(200),
   ]);
 
   const renewals = (renewalsRaw ?? []) as RenewalRow[];
@@ -72,6 +88,23 @@ export default async function LicenseDetailPage({ params }: { params: { id: stri
   });
 
   const status = license.status as LicenseStatus;
+
+  // Düzenleme paneli için mevcut lisans satırını (snake_case) LicenseInput
+  // (camelCase) şekline çeviriyoruz — LicenseFormFields hem oluşturma hem
+  // düzenleme akışında bu tek tip üzerinden çalışıyor.
+  const licenseInput: LicenseInput & { id: string } = {
+    id: license.id,
+    customerId: license.customer_id,
+    proposalId: license.proposal_id,
+    product: license.product,
+    licenseName: license.license_name ?? "",
+    seatCount: license.seat_count,
+    amount: Number(license.amount) || 0,
+    currency: license.currency,
+    startDate: license.start_date ? String(license.start_date).slice(0, 10) : "",
+    endDate: license.end_date ? String(license.end_date).slice(0, 10) : "",
+    notes: license.notes ?? "",
+  };
 
   return (
     <>
@@ -108,6 +141,11 @@ export default async function LicenseDetailPage({ params }: { params: { id: stri
             <InfoField label="Bitiş/Yenileme Tarihi" value={fmtDate(license.end_date)} />
             <InfoField label="Sahibi" value={license.owner_id ? ownerNames[license.owner_id] : "Atanmamış"} />
             <InfoField label="Oluşturma Tarihi" value={fmtDate(license.created_at)} />
+            <LicenseEditPanel
+              license={licenseInput}
+              customers={(customerRows ?? []) as CustomerOption[]}
+              proposals={(acceptedProposals ?? []) as AcceptedProposal[]}
+            />
           </div>
           {license.notes && (
             <div className="mt-4 border-t border-rg-line pt-4">

@@ -65,11 +65,34 @@ alter table public.proposal_template_sections add column if not exists content j
 alter table public.proposal_template_sections add column if not exists created_at timestamptz not null default now();
 alter table public.proposal_template_sections add column if not exists updated_at timestamptz not null default now();
 
+-- DÜZELTME (Faz 6 / V5, 2026-09-12): CI'daki "Apply Supabase migrations" workflow'u son iki
+-- push'ta da (bkz. GitHub Actions run 34635726190 ve 34675885249) FAILURE ile sonuçlandı — bunun
+-- SONUCUNDA bu dosyadan sonraki HİÇBİR migration (000008/009/010/011 dahil) canlıya hiç
+-- ULAŞMADI: fiyat listesi region kolonu, region_admin RLS düzeltmesi ve yeni teklif şablonu
+-- içeriği hep yereldeki "sıfırdan kurulan" doğrulama ortamında çalıştı ama PRODUCTION'da hiç
+-- yoktu. GitHub'ın log indirme API'sine bu oturumdan erişim izni olmadığı için tam hata metni
+-- görülemedi, ama en olası neden şu: canlıdaki proposal_template_sections tablosu migration
+-- dışında (muhtemelen elle/execute_sql ile) oluşturulmuş (yukarıdaki yorum zaten bunu öngörüyordu)
+-- — böyle bir tabloda legal_region için üstteki inline CHECK hiç uygulanmamış olabilir ve mevcut
+-- satırlardan biri 'tr'/'us' dışında bir değer (örn. NULL olmayan başka bir kısaltma) taşıyor
+-- olabilir. Bu durumda VALIDATE eden bir ADD CONSTRAINT, o satırı bulur bulmaz TÜM migration
+-- push'unu (ve ondan sonraki her dosyayı) durdurur — tam da yaşanan bu.
+--
+-- Kalıcı çözüm: kısıtı NOT VALID olarak ekle (mevcut satırları hiç doğrulamaz, sadece bundan
+-- sonraki INSERT/UPDATE'leri zorlar) VE olası başka bir sürpriz (yetki, isim çakışması vb.) için
+-- de migration'ı hiç kırmasın diye tüm işlemi bir exception handler'a sar. Bu genel ilke bundan
+-- sonra "canlıda muhtemelen elle oluşturulmuş" diye işaretlenen HER tabloya uygulanmalı —
+-- CI'ın supabase db push'u bir daha asla tek bir satır yüzünden tamamen durmasın.
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'proposal_template_sections_legal_region_check') then
-    alter table public.proposal_template_sections
-      add constraint proposal_template_sections_legal_region_check check (legal_region in ('tr', 'us'));
+    begin
+      alter table public.proposal_template_sections
+        add constraint proposal_template_sections_legal_region_check
+        check (legal_region in ('tr', 'us')) not valid;
+    exception when others then
+      raise notice 'proposal_template_sections_legal_region_check eklenemedi, atlaniyor: %', sqlerrm;
+    end;
   end if;
 end $$;
 

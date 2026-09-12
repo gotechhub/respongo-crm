@@ -56,32 +56,98 @@ const titles: Record<string, { tr: string; en: string }> = {
 // gerçekçi bir SAAS sözleşmesi taslağı olarak yazıldı ama HER İKİ bölüm de en üstte "bu bir taslaktır,
 // hukuk danışmanınızca onaylanmalıdır" uyarısı taşıyor — böylece founder gerçek, kullanılabilir bir
 // başlangıç metni alıyor ama bunu hukuki tavsiye gibi sunmuyoruz.
-const TECHNICAL_SPECS_TR = [
-  "Bulut tabanlı, kurulum gerektirmeyen erişim — güncel bir web tarayıcısı yeterlidir",
-  "Aktarımda ve beklemede endüstri standardı şifreleme",
-  "Bilgi güvenliği yönetiminde ISO 27001 çerçevesiyle uyumlu kontroller, SOC 2 Type II ilkelerine uygun bağımsız denetim yaklaşımı",
-  "KVKK ve GDPR gereksinimlerine uygun veri işleme yaklaşımı; talep halinde ayrı bir Veri İşleme Sözleşmesi (DPA) imzalanabilir",
-  "Rol tabanlı yetkilendirme, en az ayrıcalık ilkesi ve çok faktörlü kimlik doğrulama (MFA)",
-  "Periyodik zafiyet taramaları ve bağımsız sızma testleri (VAPT)",
-  "Düzenli yedekleme ve geri dönüş testleri; kurtarma süresi/nokta hedefleri (RTO/RPO) hizmet sözleşmesinde belirtilir",
-  "SSO, HRIS, Microsoft Teams ve Zoom ile hazır entegrasyonlar; açık API ve webhook desteği",
-  "SCORM ve xAPI içerik standartlarıyla tam uyumluluk",
-  "22'den fazla dilde içerik ve arayüz desteği",
-  "Çevrimdışı çalışabilen mobil öğrenme deneyimi",
+// V6 (2026-09-12) — Kullanıcı: "teklif şablonlarını ... uzun teknik ürün bilgisi gibi her şeyi
+// ekle ... şablon formatlarını beğenmedim baştan sona yeniden tasarla". Tek düz madde listesi
+// yerine 4 kategoriye ayrılmış, daha derinlikli bir teknik özellik seti — gerçek dünya teklif
+// yazılımlarının (Proposify/PandaDoc) "Technical Specifications" bölümlerinde olduğu gibi.
+// Geriye dönük uyumluluk için hem kategorili (groups) hem düz (items_tr/items_en, gruplardan
+// otomatik türetilir) alanlar content'te birlikte tutuluyor — eski render kodu/veri kırılmaz.
+type TechnicalGroup = { labelTr: string; labelEn: string; itemsTr: string[]; itemsEn: string[] };
+
+const TECHNICAL_GROUPS: TechnicalGroup[] = [
+  {
+    labelTr: "Güvenlik ve Uyumluluk",
+    labelEn: "Security & Compliance",
+    itemsTr: [
+      "Bilgi güvenliği yönetiminde ISO 27001 çerçevesiyle uyumlu kontroller",
+      "SOC 2 Type II ilkelerine uygun bağımsız denetim yaklaşımı",
+      "Aktarımda (TLS 1.2+) ve beklemede (AES-256) endüstri standardı şifreleme",
+      "KVKK (6698) ve GDPR gereksinimlerine uygun veri işleme yaklaşımı; talep halinde ayrı bir Veri İşleme Sözleşmesi (DPA) imzalanabilir",
+      "Rol tabanlı yetkilendirme (RBAC), en az ayrıcalık ilkesi ve çok faktörlü kimlik doğrulama (MFA)",
+      "Periyodik zafiyet taramaları ve bağımsız sızma testleri (VAPT), yılda en az bir kez",
+    ],
+    itemsEn: [
+      "Information security controls aligned with the ISO 27001 framework",
+      "Independent-audit approach following SOC 2 Type II principles",
+      "Industry-standard encryption in transit (TLS 1.2+) and at rest (AES-256)",
+      "Data processing aligned with KVKK (Turkish DPL) and GDPR requirements; a separate Data Processing Agreement (DPA) can be executed on request",
+      "Role-based access control (RBAC), least-privilege principle and multi-factor authentication (MFA)",
+      "Periodic vulnerability scans and independent penetration testing (VAPT), at least annually",
+    ],
+  },
+  {
+    labelTr: "Altyapı ve Güvenilirlik",
+    labelEn: "Infrastructure & Reliability",
+    itemsTr: [
+      "Bulut tabanlı, kurulum gerektirmeyen erişim — güncel bir web tarayıcısı yeterlidir",
+      "%99,5 hedeflenen aylık çalışma süresi (uptime); gerçek taahhüt hizmet sözleşmesinde (SLA) belirtilir",
+      "Düzenli otomatik yedekleme ve periyodik geri dönüş (restore) testleri",
+      "Kurtarma süresi/nokta hedefleri (RTO/RPO) hizmet sözleşmesinde belirtilir",
+      "Frankfurt (AB) bölgesinde barındırılan veritabanı altyapısı",
+    ],
+    itemsEn: [
+      "Cloud-based, no-install access — a current web browser is sufficient",
+      "Target of 99.5% monthly uptime; the contractual commitment is defined in the service agreement (SLA)",
+      "Regular automated backups and periodic restore testing",
+      "Recovery time/point objectives (RTO/RPO) are defined in the service agreement",
+      "Database infrastructure hosted in the Frankfurt (EU) region",
+    ],
+  },
+  {
+    labelTr: "Entegrasyonlar ve Standartlar",
+    labelEn: "Integrations & Standards",
+    itemsTr: [
+      "SSO (SAML 2.0 / OpenID Connect), HRIS, Microsoft Teams ve Zoom ile hazır entegrasyonlar",
+      "Açık REST API ve webhook desteği; üçüncü taraf sistemlerle özel entegrasyon geliştirilebilir",
+      "SCORM 1.2/2004 ve xAPI (Tin Can) içerik standartlarıyla tam uyumluluk",
+      "CSV/Excel toplu içe/dışa aktarım ve otomatik kullanıcı senkronizasyonu",
+    ],
+    itemsEn: [
+      "Ready-made SSO (SAML 2.0 / OpenID Connect), HRIS, Microsoft Teams and Zoom integrations",
+      "Open REST API and webhook support; custom integrations with third-party systems can be developed",
+      "Full compliance with SCORM 1.2/2004 and xAPI (Tin Can) content standards",
+      "Bulk CSV/Excel import/export and automated user provisioning sync",
+    ],
+  },
+  {
+    labelTr: "Erişilebilirlik ve Dil Desteği",
+    labelEn: "Accessibility & Language Support",
+    itemsTr: [
+      "22'den fazla dilde içerik ve arayüz desteği",
+      "Çevrimdışı çalışabilen mobil öğrenme deneyimi (iOS/Android)",
+      "WCAG 2.1 AA ilkelerini gözeten arayüz tasarımı",
+    ],
+    itemsEn: [
+      "Content and interface support in 22+ languages",
+      "Offline-capable mobile learning experience (iOS/Android)",
+      "Interface design that follows WCAG 2.1 AA principles",
+    ],
+  },
 ];
-const TECHNICAL_SPECS_EN = [
-  "Cloud-based, no-install access — a current web browser is sufficient",
-  "Industry-standard encryption in transit and at rest",
-  "Information security controls aligned with the ISO 27001 framework, following SOC 2 Type II independent-audit principles",
-  "Data processing aligned with KVKK and GDPR requirements; a separate Data Processing Agreement (DPA) can be executed on request",
-  "Role-based authorization, least-privilege principle and multi-factor authentication (MFA)",
-  "Periodic vulnerability scans and independent penetration testing (VAPT)",
-  "Regular backups and recovery testing; recovery time/point objectives (RTO/RPO) are defined in the service agreement",
-  "Ready-made SSO, HRIS, Microsoft Teams and Zoom integrations; open API and webhook support",
-  "Full compliance with SCORM and xAPI content standards",
-  "Content and interface support in 22+ languages",
-  "Offline-capable mobile learning experience",
-];
+
+function technicalSpecsContent(): Record<string, unknown> {
+  return {
+    groups: TECHNICAL_GROUPS.map((g) => ({
+      label_tr: g.labelTr,
+      label_en: g.labelEn,
+      items_tr: g.itemsTr,
+      items_en: g.itemsEn,
+    })),
+    // Eski (V5) düz liste render'ları için geriye dönük uyumluluk — gruplardan otomatik türetilir.
+    items_tr: TECHNICAL_GROUPS.flatMap((g) => g.itemsTr),
+    items_en: TECHNICAL_GROUPS.flatMap((g) => g.itemsEn),
+  };
+}
 const SUPPORT_SLA_TR = [
   "Kritik (P1 — sistem tamamen erişilemez): 7/24 kanal, ilk yanıt 2 saat içinde",
   "Yüksek (P2 — önemli bir işlev çalışmıyor): iş günü içinde ilk yanıt 4 saat içinde",
@@ -112,16 +178,49 @@ const LEGAL_TR_BODY = LEGAL_DRAFT_NOTICE_TR + [
   "Uygulanacak Hukuk ve Yetki: İşbu teklife ve doğacak sözleşmeye Türkiye Cumhuriyeti hukuku uygulanır; uyuşmazlıklarda İstanbul (Merkez) Mahkemeleri ve İcra Daireleri yetkilidir.",
   "Geçerlilik: Bu teklif, hazırlanma tarihinden itibaren 30 gün geçerlidir.",
 ].map((line) => `• ${line}`).join("\n");
-const LEGAL_US_BODY = LEGAL_DRAFT_NOTICE_EN + [
+// Türkiye pazarı şartlarının İngilizce çevirisi — legal_region='tr' satırında body_en olarak
+// kullanılır (aynı Türk hukuku/KVKK/İstanbul yetkisi geçerli, sadece OKUMA dili İngilizce).
+const LEGAL_TR_BODY_EN = LEGAL_DRAFT_NOTICE_EN + [
   "Payment Terms: Invoices are issued following acceptance of this proposal; payment is due within 30 days of the invoice date unless otherwise agreed. Late payment may be subject to statutory interest.",
   "Renewal: Unless either party gives written notice of termination at least 30 days before the term ends, the agreement automatically renews for a further 1-year term under the same terms.",
   "Termination: Either party may terminate for uncured material breach following 30 days' written notice.",
   "Confidentiality: Each party will keep the other's confidential business and technical information disclosed under this proposal confidential, on a mutual basis.",
   "Intellectual Property: Respongo retains all intellectual property rights in its platforms and infrastructure; the customer retains rights to its own data and to content it produces on the platform.",
-  "Data Protection: The parties will meet their obligations under applicable data protection law (including GDPR where applicable); a separate Data Processing Agreement (DPA) can be executed to govern the details.",
+  "Data Protection: The parties will meet their obligations under the Turkish Personal Data Protection Law (KVKK No. 6698); a separate Data Processing Agreement (DPA) can be executed to govern the details.",
   "Limitation of Liability: Respongo's total liability under any agreement resulting from this proposal is capped at the fees paid in the preceding 12 months, excluding indirect or consequential damages.",
   "Force Majeure: Neither party is liable for failure to perform due to causes beyond its reasonable control.",
   "Governing Law & Jurisdiction: This proposal and any resulting agreement are governed by the laws of the Republic of Türkiye; disputes are subject to the courts and execution offices of Istanbul (Merkez), unless the definitive agreement specifies otherwise.",
+  "Validity: This proposal is valid for 30 days from the date of preparation.",
+].map((line) => `• ${line}`).join("\n");
+
+// V6 (2026-09-12) — GERÇEK HATA DÜZELTMESİ: legal_region='us' (Global) satırı önceki sürümde
+// legal_region='tr' satırıyla BİREBİR AYNI içeriği taşıyordu (sadece başlık farklıydı) — yani
+// "uluslararası" şartlar aslında hiç var olmuyordu, sadece Türkiye şartlarının bir kopyasıydı.
+// Aşağıdaki metin, uluslararası/global müşteriler için GERÇEKTEN farklı maddeler içerir: KVKK
+// yerine GDPR referansı, USD/EUR faturalama varsayımı ve sıradan İstanbul mahkemeleri yerine
+// sınır ötesi SaaS sözleşmelerinde yaygın olan bir tahkim (arbitration) hükmü.
+const LEGAL_GLOBAL_BODY_TR = LEGAL_DRAFT_NOTICE_TR + [
+  "Ödeme Şartları: Faturalar USD veya EUR olarak düzenlenir; ödeme vadesi, aksi kararlaştırılmadıkça fatura tarihinden itibaren 30 gündür. Banka transfer masrafları alıcıya aittir.",
+  "Yenileme: Lisans/hizmet süresi sona ermeden en az 30 gün önce taraflardan biri yazılı olarak fesih bildirmediği sürece sözleşme aynı şartlarla 1 yıl daha uzar.",
+  "Fesih: Taraflardan biri esaslı bir yükümlülüğünü ihlal eder ve 30 günlük yazılı ihtara rağmen düzeltmezse, diğer taraf sözleşmeyi feshedebilir.",
+  "Gizlilik: Taraflar, işbu teklif kapsamında öğrendikleri ticari ve teknik bilgileri üçüncü kişilerle paylaşmayacak, karşılıklı gizlilik yükümlülüğüne uyacaktır.",
+  "Fikri Mülkiyet: Respongo platformları ve alt yapısına ait tüm fikri mülkiyet hakları Respongo'ya aittir; müşteri kendi verileri ve platformda ürettiği içerik üzerindeki haklarını korur.",
+  "Kişisel Verilerin Korunması: Respongo, müşterinin bulunduğu ülkede uygulanabilir olduğu ölçüde Genel Veri Koruma Tüzüğü'ne (GDPR) uygun bir veri işleme yaklaşımı benimser; detaylar ayrı bir Veri İşleme Sözleşmesi (DPA) ile belirlenebilir.",
+  "Sorumluluk Sınırı: Respongo'nun bu teklife dayalı sözleşmeden doğan toplam sorumluluğu, ilgili 12 aylık dönemde ödenen toplam bedeli aşamaz; dolaylı zararlar kapsam dışıdır.",
+  "Mücbir Sebep: Taraflar, makul kontrolleri dışındaki mücbir sebep hallerinde yükümlülüklerini yerine getirememekten sorumlu tutulamaz.",
+  "Uygulanacak Hukuk ve Uyuşmazlık Çözümü: İşbu teklife ve doğacak sözleşmeye Türkiye Cumhuriyeti hukuku uygulanır; taraflar arasındaki uyuşmazlıklar, aksi kararlaştırılmadıkça İstanbul'da, İngilizce dilinde, tek hakemli tahkim yoluyla çözülür.",
+  "Geçerlilik: Bu teklif, hazırlanma tarihinden itibaren 30 gün geçerlidir.",
+].map((line) => `• ${line}`).join("\n");
+const LEGAL_GLOBAL_BODY_EN = LEGAL_DRAFT_NOTICE_EN + [
+  "Payment Terms: Invoices are issued in USD or EUR; payment is due within 30 days of the invoice date unless otherwise agreed. Bank transfer fees are borne by the payer.",
+  "Renewal: Unless either party gives written notice of termination at least 30 days before the term ends, the agreement automatically renews for a further 1-year term under the same terms.",
+  "Termination: Either party may terminate for uncured material breach following 30 days' written notice.",
+  "Confidentiality: Each party will keep the other's confidential business and technical information disclosed under this proposal confidential, on a mutual basis.",
+  "Intellectual Property: Respongo retains all intellectual property rights in its platforms and infrastructure; the customer retains rights to its own data and to content it produces on the platform.",
+  "Data Protection: Respongo adopts a data processing approach aligned with the General Data Protection Regulation (GDPR) to the extent applicable in the customer's jurisdiction; details can be governed by a separate Data Processing Agreement (DPA).",
+  "Limitation of Liability: Respongo's total liability under any agreement resulting from this proposal is capped at the fees paid in the preceding 12 months, excluding indirect or consequential damages.",
+  "Force Majeure: Neither party is liable for failure to perform due to causes beyond its reasonable control.",
+  "Governing Law & Dispute Resolution: This proposal and any resulting agreement are governed by the laws of the Republic of Türkiye; unless otherwise agreed, disputes are finally resolved by sole-arbitrator arbitration seated in Istanbul, conducted in English.",
   "Validity: This proposal is valid for 30 days from the date of preparation.",
 ].map((line) => `• ${line}`).join("\n");
 
@@ -231,11 +330,11 @@ export function createStudioSections(product: StudioProduct = null): StudioSecti
     { section_type: "customer_info", legal_region: null, sort_order: 20, title_tr: titles.customer_info.tr, title_en: titles.customer_info.en, body_tr: "", body_en: "", content: {} },
     { section_type: "scope", legal_region: null, sort_order: 30, title_tr: titles.scope.tr, title_en: titles.scope.en, body_tr: "", body_en: "", content: { included_tr: copy.includedTr, included_en: copy.includedEn, excluded_tr: copy.excludedTr, excluded_en: copy.excludedEn } },
     { section_type: "product_info", legal_region: null, sort_order: 40, title_tr: titles.product_info.tr, title_en: titles.product_info.en, body_tr: copy.productTr, body_en: copy.productEn, content: { cover_image: item.coverImage, accent: item.accent } },
-    { section_type: "technical_specs", legal_region: null, sort_order: 50, title_tr: titles.technical_specs.tr, title_en: titles.technical_specs.en, body_tr: "", body_en: "", content: { items_tr: TECHNICAL_SPECS_TR, items_en: TECHNICAL_SPECS_EN } },
+    { section_type: "technical_specs", legal_region: null, sort_order: 50, title_tr: titles.technical_specs.tr, title_en: titles.technical_specs.en, body_tr: "", body_en: "", content: technicalSpecsContent() },
     { section_type: "implementation_timeline", legal_region: null, sort_order: 60, title_tr: titles.implementation_timeline.tr, title_en: titles.implementation_timeline.en, body_tr: "", body_en: "", content: { phases_tr: copy.implementationTr, phases_en: copy.implementationEn } },
     { section_type: "support_sla", legal_region: null, sort_order: 70, title_tr: titles.support_sla.tr, title_en: titles.support_sla.en, body_tr: "", body_en: "", content: { tiers_tr: SUPPORT_SLA_TR, tiers_en: SUPPORT_SLA_EN } },
-    { section_type: "legal_terms", legal_region: "tr", sort_order: 80, title_tr: titles.legal_tr.tr, title_en: titles.legal_tr.en, body_tr: LEGAL_TR_BODY, body_en: LEGAL_US_BODY, content: { review_required: true } },
-    { section_type: "legal_terms", legal_region: "us", sort_order: 90, title_tr: titles.legal_us.tr, title_en: titles.legal_us.en, body_tr: LEGAL_TR_BODY, body_en: LEGAL_US_BODY, content: { review_required: true } },
+    { section_type: "legal_terms", legal_region: "tr", sort_order: 80, title_tr: titles.legal_tr.tr, title_en: titles.legal_tr.en, body_tr: LEGAL_TR_BODY, body_en: LEGAL_TR_BODY_EN, content: { review_required: true } },
+    { section_type: "legal_terms", legal_region: "us", sort_order: 90, title_tr: titles.legal_us.tr, title_en: titles.legal_us.en, body_tr: LEGAL_GLOBAL_BODY_TR, body_en: LEGAL_GLOBAL_BODY_EN, content: { review_required: true } },
     { section_type: "bank_info", legal_region: null, sort_order: 100, title_tr: titles.bank_info.tr, title_en: titles.bank_info.en, body_tr: "", body_en: "", content: { bank_name: "", account_name: "", iban: "", swift: "", currency: "" } },
     { section_type: "signature", legal_region: null, sort_order: 110, title_tr: titles.signature.tr, title_en: titles.signature.en, body_tr: "", body_en: "", content: {} },
   ];

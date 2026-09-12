@@ -35,6 +35,26 @@ export const REGION_LABELS_TR: Record<Region, string> = {
   global: "Global",
 };
 
+// Sağ üstteki TR/EN anahtarı sidebar'da rol/bölge etiketlerini de çevirebilsin diye.
+export const ROLE_LABELS_EN: Record<UserRole, string> = {
+  founder: "Founder (Super Admin)",
+  region_admin: "Region Admin",
+  sales_inhouse: "Sales Team",
+  partner_tr: "Sales Partner (TR)",
+  partner_global: "Sales Partner (Global)",
+  freelancer: "Freelancer",
+  project_member: "Project Team",
+  support_agent: "Support Agent",
+  marketing: "Marketing",
+  finance: "Finance",
+  customer: "Customer",
+};
+
+export const REGION_LABELS_EN: Record<Region, string> = {
+  tr: "Turkey",
+  global: "Global",
+};
+
 // Süper Admin ekranından davet edilebilecek roller (customer hariç — portal ayrı fazda).
 export const INVITABLE_ROLES: UserRole[] = [
   "founder",

@@ -8,8 +8,9 @@ import { ChevronDown, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navGroups, resolveActiveHref } from "@/lib/nav-config";
 import { createClient } from "@/lib/supabase/client";
-import { ROLE_LABELS_TR, REGION_LABELS_TR, type ProfileRow } from "@/lib/roles";
+import { ROLE_LABELS_TR, ROLE_LABELS_EN, REGION_LABELS_TR, REGION_LABELS_EN, type ProfileRow } from "@/lib/roles";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { pickLocaleText, type UiLocale } from "@/lib/locale";
 
 const ecoDots = [
   { key: "golms", className: "bg-golms" },
@@ -24,13 +25,20 @@ function initialsOf(name: string) {
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
-export function Sidebar({ profile }: { profile: ProfileRow }) {
+export function Sidebar({ profile, locale = "tr" }: { profile: ProfileRow; locale?: UiLocale }) {
   const pathname = usePathname();
   const router = useRouter();
+  const tr = locale === "tr";
 
   const displayName = profile.full_name || profile.email;
-  const roleLabel = profile.role ? ROLE_LABELS_TR[profile.role] : "Rol atanmadı";
-  const regionLabel = profile.region ? ` · ${REGION_LABELS_TR[profile.region]}` : "";
+  const roleLabel = profile.role
+    ? tr
+      ? ROLE_LABELS_TR[profile.role]
+      : ROLE_LABELS_EN[profile.role]
+    : tr
+      ? "Rol atanmadı"
+      : "No role assigned";
+  const regionLabel = profile.region ? ` · ${tr ? REGION_LABELS_TR[profile.region] : REGION_LABELS_EN[profile.region]}` : "";
 
   // Tek bir "en spesifik" aktif href hesaplanır — bkz. lib/nav-config.ts
   // resolveActiveHref yorumu (önceki "birden fazla öğe aynı anda aktif
@@ -106,7 +114,7 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
               >
                 <GroupIcon className="h-4 w-4 shrink-0 text-sidebar-fg-faint" />
                 <span className="flex-1 text-[10.5px] font-bold uppercase tracking-[.9px] text-sidebar-fg-label">
-                  {group.label}
+                  {pickLocaleText(locale, group.label, group.labelEn)}
                 </span>
                 <ChevronDown
                   className={cn(
@@ -122,7 +130,7 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
                     <div key={subgroup.label ?? `sg-${sgIndex}`}>
                       {subgroup.label && (
                         <div className="mb-1 px-2.5 text-[9.5px] font-semibold uppercase tracking-[.7px] text-sidebar-fg-faint/70">
-                          {subgroup.label}
+                          {pickLocaleText(locale, subgroup.label, subgroup.labelEn)}
                         </div>
                       )}
                       {subgroup.items.map((item) => {
@@ -136,7 +144,7 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
                               className="mb-0.5 flex cursor-not-allowed items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13.1px] font-medium text-sidebar-fg-faint/60"
                             >
                               <Icon className="h-4 w-4 shrink-0 opacity-60" />
-                              {item.label}
+                              {pickLocaleText(locale, item.label, item.labelEn)}
                               <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold">
                                 V1
                               </span>
@@ -154,7 +162,7 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
                             )}
                           >
                             <Icon className={cn("h-4 w-4 shrink-0 opacity-80", active && "opacity-100")} />
-                            {item.label}
+                            {pickLocaleText(locale, item.label, item.labelEn)}
                             {item.badge && (
                               <span className="ml-auto rounded-full bg-white/[.12] px-1.5 py-0.5 text-[10px] font-semibold">
                                 {item.badge}
@@ -174,7 +182,7 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
 
       <div className="mt-auto border-t border-white/[.08] pt-3.5">
         <div className="flex items-center gap-2.5 p-1.5">
-          <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-2.5" title="Profilim">
+          <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-2.5" title={tr ? "Profilim" : "My Profile"}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-golxp to-golms font-display text-xs font-bold text-white">
               {profile.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -196,7 +204,7 @@ export function Sidebar({ profile }: { profile: ProfileRow }) {
           <ThemeToggle />
           <button
             onClick={handleSignOut}
-            title="Çıkış yap"
+            title={tr ? "Çıkış yap" : "Sign out"}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-sidebar-fg-faint transition-colors hover:bg-white/[.08] hover:text-white"
           >
             <LogOut className="h-3.5 w-3.5" />
