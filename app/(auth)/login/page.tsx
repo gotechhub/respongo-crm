@@ -22,21 +22,36 @@ export default function LoginPage() {
     setStatus("loading");
     setErrorMsg("");
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    if (error) {
+      if (error) {
+        setStatus("error");
+        setErrorMsg(error.message);
+        return;
+      }
+
+      setStatus("sent");
+    } catch {
+      // DERS (2026-10-01): Supabase backend'e (auth sunucusuna) hiç
+      // ulaşılamadığında (ör. proje duraklatılmış/silinmiş, DNS hatası, ağ
+      // sorunu) supabase-js signInWithOtp() bir {error} objesiyle DÖNMÜYOR,
+      // ham bir "TypeError: Failed to fetch" FIRLATIYOR (throw) — bu da
+      // yukarıdaki normal hata kontrolünü hiç atlayıp butonun sonsuza kadar
+      // "Gönderiliyor..." yazarak donuk kalmasına yol açıyordu (kullanıcıya
+      // HİÇBİR hata mesajı gösterilmiyordu). Artık bu durum da yakalanıp net
+      // bir Türkçe mesajla gösteriliyor.
       setStatus("error");
-      setErrorMsg(error.message);
-      return;
+      setErrorMsg(
+        "Sunucuya ulaşılamadı. İnternet bağlantını kontrol et; sorun devam ederse veritabanı (Supabase) tarafında bir kesinti olabilir."
+      );
     }
-
-    setStatus("sent");
   }
 
   return (
